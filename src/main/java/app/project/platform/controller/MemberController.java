@@ -1,47 +1,49 @@
 package app.project.platform.controller;
 
-import app.project.platform.dto.MemberDTO;
+import app.project.platform.domain.type.ApiResponse;
+import app.project.platform.dto.LoginRequestDto;
+import app.project.platform.dto.MemberDto;
+import app.project.platform.dto.SignupRequestDTO;
 import app.project.platform.service.MemberService;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Controller;
-import org.springframework.validation.BindingResult;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 
-@Controller
-@RequestMapping("/member")
+@RestController
+@RequestMapping("/api/v1/members")
 @RequiredArgsConstructor
 public class MemberController {
 
     private final MemberService memberService;
 
-    @GetMapping("/login")
-    public String login(MemberDTO memberDTO) {
-        return "member/login_form";
-    }
+    @PostMapping("/login")
+    public ResponseEntity<ApiResponse<String>> login(@RequestBody @Valid LoginRequestDto loginRequestDto,
+                                                     HttpServletRequest httpRequest // 세선을 위해 필요!
+                                                     ) {
 
-    @GetMapping("/signup")
-    public String signupForm(MemberDTO memberDTO) {
-        return "member/signup_form";
+        MemberDto memberDto = memberService.login(loginRequestDto.getEmail(), loginRequestDto.getPassword());
+
+        // 2. 세션 생성 (로그인 유지)
+        HttpSession session = httpRequest.getSession();
+        session.setAttribute("LOGIN_MEMBER", memberDto);
+        session.setMaxInactiveInterval(60 * 30);
+
+        return ResponseEntity.status(HttpStatus.ACCEPTED)
+                .body(ApiResponse.success("로그인 성공"));
+
     }
 
     @PostMapping("/signup")
-    public String signup(@Valid MemberDTO memberDTO, BindingResult bindingResult) {
+    public ResponseEntity<ApiResponse<Long>> signup(@RequestBody @Valid SignupRequestDTO signupRequestDTO) {
 
-        if (bindingResult.hasErrors()) {
-            return "member/signup_form";
-        }
+        Long memberId = memberService.signup(signupRequestDTO);
 
-        try {
-            memberService.join(memberDTO);
-        } catch (IllegalStateException e) {
-            bindingResult.reject("signupFailed", e.getMessage());
-            return "member/signup_form";
-        }
-
-        return "redirect:/"; // 성공 시 메인으로
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success(memberId));
 
     }
 
