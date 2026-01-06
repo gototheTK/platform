@@ -1,6 +1,7 @@
 package app.project.platform.dto;
 
 
+import app.project.platform.domain.type.Role;
 import app.project.platform.entity.Member;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -20,7 +21,7 @@ public class MemberDto implements Serializable {
 
     private String email;
 
-    private String role;
+    private Role role;
 
     // Entity -> DTO 변환 메서드 (여기서 password는 아예 뺍니다!)
     public static MemberDto from(Member member) {
@@ -28,7 +29,7 @@ public class MemberDto implements Serializable {
                 .id(member.getId())
                 .email(member.getEmail())
                 .username(member.getUsername())
-                .role("ROLE_USER")
+                .role(member.getRole())
                 .build();
     }
 

@@ -1,5 +1,6 @@
 package app.project.platform.entity;
 
+import app.project.platform.domain.type.Role;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -24,11 +25,16 @@ public class Member {
     @Column(unique = true, nullable = false)
     private String email;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private Role role;
+
     @Builder
-    public Member(String username, String password, String email) {
+    public Member(String username, String password, String email, Role role) {
         this.username = username;
         this.password = password;
         this.email = email;
+        this.role = role;
     }
 
 }
