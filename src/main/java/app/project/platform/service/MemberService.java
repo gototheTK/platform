@@ -36,9 +36,14 @@ public class MemberService {
     @Transactional(readOnly = true)
     public MemberDto login(String email, String password) {
 
-        return memberRepository
-                .findByEmailAndPassword(email, passwordEncoder.encode(password))
-                .orElseThrow((()->new BusinessException(ErrorCode.UNAUTHORIZED)));
+        Member member = memberRepository.findByEmail(email)
+                .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+
+        if (!passwordEncoder.matches(password, member.getPassword())) {
+            throw new BusinessException(ErrorCode.UNAUTHORIZED);
+        }
+
+        return MemberDto.from(member);
 
     }
 

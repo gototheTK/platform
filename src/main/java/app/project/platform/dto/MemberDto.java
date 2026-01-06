@@ -28,6 +28,7 @@ public class MemberDto implements Serializable {
                 .id(member.getId())
                 .email(member.getEmail())
                 .username(member.getUsername())
+                .role("ROLE_USER")
                 .build();
     }
 

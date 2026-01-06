@@ -11,7 +11,10 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/v1/members")
@@ -32,8 +35,8 @@ public class MemberController {
         session.setAttribute("LOGIN_MEMBER", memberDto);
         session.setMaxInactiveInterval(60 * 30);
 
-        return ResponseEntity.status(HttpStatus.ACCEPTED)
-                .body(ApiResponse.success("로그인 성공"));
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ApiResponse.success("LOGIN_SUCCESS"));
 
     }
 
