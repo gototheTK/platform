@@ -2,8 +2,10 @@ package app.project.platform.domain;
 
 
 import app.project.platform.domain.type.ErrorCode;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
+@Getter
 @RequiredArgsConstructor
 public class ApiResponse<T> {
 

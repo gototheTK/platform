@@ -5,9 +5,11 @@ import app.project.platform.entity.Member;
 import lombok.Builder;
 import lombok.Getter;
 
+import java.io.Serializable;
+
 @Getter
 @Builder
-public class MemberDto {
+public class MemberDto implements Serializable {
 
     private Long id;
     private String email;

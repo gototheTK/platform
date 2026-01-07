@@ -50,7 +50,7 @@ public class MemberService {
 
         Member member = memberRepository.findByEmail(loginRequestDto.getEmail()).orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
 
-        if (passwordEncoder.matches(loginRequestDto.getPassword(), member.getPassword())) throw new BusinessException(ErrorCode.LOGIN_FAILED);
+        if (!passwordEncoder.matches(loginRequestDto.getPassword(), member.getPassword())) throw new BusinessException(ErrorCode.LOGIN_FAILED);
 
         return MemberDto.from(member);
 

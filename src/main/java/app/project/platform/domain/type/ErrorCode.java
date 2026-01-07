@@ -27,6 +27,7 @@ public enum ErrorCode {
     MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "M003", "존재하지 않는 회원입니다."),
     LOGIN_FAILED(HttpStatus.BAD_REQUEST, "M004", "아이디 또는 비밀번호가 일치하지 않습니다."),
     UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "M005", "로그인이 필요한 서비스입니다."),
+    INVALID_EMAIL_FORMAT(HttpStatus.BAD_REQUEST, "M006", "올바른 이메일 형식이 아닙니다."),
 
     // =================================================================
     // 3. Content (게시글/컨텐츠 관련) - P001 ~ P099
