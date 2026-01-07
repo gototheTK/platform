@@ -27,6 +27,7 @@ public class SecurityConfig {
                 .httpBasic(AbstractHttpConfigurer::disable) // HTTP Basic 인증 끄기
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
+                                "/h2-console/**",
                                 "/api/v1/members/signup",
                                 "/api/v1/members/login",
                                 "/swagger-ui/**",

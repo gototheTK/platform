@@ -1,34 +1,24 @@
-package app.project.platform.dto;
-
+package app.project.platform.domain.dto;
 
 import app.project.platform.domain.type.Role;
 import app.project.platform.entity.Member;
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
 import lombok.Builder;
 import lombok.Getter;
-import lombok.Setter;
-
-import java.io.Serializable;
 
 @Getter
 @Builder
-public class MemberDto implements Serializable {
+public class MemberDto {
 
     private Long id;
-
-    private String username;
-
     private String email;
-
+    private String nickname;
     private Role role;
 
-    // Entity -> DTO 변환 메서드 (여기서 password는 아예 뺍니다!)
     public static MemberDto from(Member member) {
         return MemberDto.builder()
                 .id(member.getId())
                 .email(member.getEmail())
-                .username(member.getUsername())
+                .nickname(member.getNickname())
                 .role(member.getRole())
                 .build();
     }

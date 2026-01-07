@@ -1,9 +1,9 @@
 package app.project.platform.controller;
 
-import app.project.platform.domain.type.ApiResponse;
-import app.project.platform.dto.LoginRequestDto;
-import app.project.platform.dto.MemberDto;
-import app.project.platform.dto.SignupRequestDTO;
+import app.project.platform.domain.ApiResponse;
+import app.project.platform.domain.dto.LoginRequestDto;
+import app.project.platform.domain.dto.MemberDto;
+import app.project.platform.domain.dto.SignupRequestDto;
 import app.project.platform.service.MemberService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
@@ -23,31 +23,29 @@ public class MemberController {
 
     private final MemberService memberService;
 
+    @PostMapping("/signup")
+    public ResponseEntity<ApiResponse<Long>> signup(@RequestBody @Valid SignupRequestDto signupDto) {
+
+        Long memberId = memberService.signup(signupDto);
+
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(ApiResponse.success(memberId));
+    }
+
     @PostMapping("/login")
-    public ResponseEntity<ApiResponse<String>> login(@RequestBody @Valid LoginRequestDto loginRequestDto,
-                                                     HttpServletRequest httpRequest // 세선을 위해 필요!
-                                                     ) {
+    public ResponseEntity<ApiResponse<String>> login(
+            @RequestBody @Valid LoginRequestDto loginRequestDto,
+            HttpServletRequest httpServletRequest) {
 
-        MemberDto memberDto = memberService.login(loginRequestDto.getEmail(), loginRequestDto.getPassword());
+        MemberDto memberDto = memberService.login(loginRequestDto);
 
-        // 2. 세션 생성 (로그인 유지)
-        HttpSession session = httpRequest.getSession();
+        HttpSession session = httpServletRequest.getSession();
         session.setAttribute("LOGIN_MEMBER", memberDto);
         session.setMaxInactiveInterval(60 * 30);
 
-        return ResponseEntity.status(HttpStatus.OK)
-                .body(ApiResponse.success("LOGIN_SUCCESS"));
-
-    }
-
-    @PostMapping("/signup")
-    public ResponseEntity<ApiResponse<Long>> signup(@RequestBody @Valid SignupRequestDTO signupRequestDTO) {
-
-        Long memberId = memberService.signup(signupRequestDTO);
-
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success(memberId));
-
+        return ResponseEntity
+                .ok(ApiResponse.success("LOGIN_SUCCESS"));
     }
 
 }
