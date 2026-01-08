@@ -32,7 +32,7 @@ public class ContentService {
     @Transactional
     public Long write(MemberDto memberDto, WriteRequestDto writeRequestDto) {
 
-        Member member = memberRepository.findByEmail(memberDto.getEmail()).orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+        Member member = memberRepository.findById(memberDto.getId()).orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
 
         Content content = Content.builder()
                 .title(writeRequestDto.getTitle())
@@ -47,7 +47,7 @@ public class ContentService {
     @Transactional
     public Long modify(MemberDto memberDto, ModifyRequestDto modifyRequestDto) {
 
-        Content content = contentRepository.findById(modifyRequestDto.getId()).orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+        Content content = contentRepository.findById(modifyRequestDto.getId()).orElseThrow(() -> new BusinessException(ErrorCode.CONTENT_NOT_FOUND));
 
         if(!memberDto.getId().equals(content.getAuthor().getId())) throw new BusinessException(ErrorCode.UNAUTHORIZED);
 

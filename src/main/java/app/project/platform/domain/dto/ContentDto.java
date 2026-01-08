@@ -6,6 +6,8 @@ import lombok.Getter;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 
+import java.time.LocalDateTime;
+
 @Getter
 @Builder
 public class ContentDto {
@@ -18,9 +20,9 @@ public class ContentDto {
 
     private String nickname;
 
-    private CreatedDate createdDate;
+    private LocalDateTime createdDate;
 
-    private LastModifiedDate lastModifiedDate;
+    private LocalDateTime lastModifiedDate;
 
     public static ContentDto from (Content content) {
        return ContentDto.builder()

@@ -1,15 +1,57 @@
 # Indie Platform
 
-## 비지니스 로직
+## 💾 ERD (Database Design)
 
-- 기초적인 회원 관리
-  - [x] 기초적인 회원 가입
-  - [x] 기초적인 로그인
+```mermaid
+erDiagram
+    MEMBER ||--o{ CONTENT : writes
+    MEMBER ||--o{ COMMENT : writes
+    CATEGORY ||--o{ CONTENT : classifies
+    CONTENT ||--o{ COMMENT : has
+    CONTENT ||--o{ CONTENT_IMAGE : has
+    COMMENT ||--o{ COMMENT : parent
 
-- 기초적인 게시글 작성
-  - [ ] 기초적인 게시글 목록
-  - [ ] 기초적인 게시글 쓰기
-  - [ ] 기초적인 게시글 댓글 목록
-  - [ ] 기초적인 게시글 댓글 쓰기
-  - [ ] 기초적인 게시글 대댓글 목록
-  - [ ] 기초적인 게시글 대댓글 쓰기
+    MEMBER {
+        bigint id PK
+        varchar email "Unique"
+        varchar password
+        varchar nickname "Unique"
+        varchar role "Enum: ADMIN, WRITER, USER"
+        datetime created_date
+        datetime modified_date
+    }
+
+    CONTENT {
+        bigint id PK
+        varchar title
+        text description
+        int category_id FK
+        bigint author_id FK
+        varchar thumbnail_url
+        datetime created_date
+        datetime modified_date
+    }
+
+    CATEGORY {
+        int id PK
+        int code
+        varchar name
+    }
+
+    COMMENT {
+        bigint id PK
+        varchar text
+        bigint content_id FK
+        bigint author_id FK
+        bigint parent_id FK "Self Join"
+        datetime created_date
+        datetime modified_date
+    }
+
+    CONTENT_IMAGE {
+        bigint id PK
+        bigint content_id FK
+        varchar file_url
+        varchar original_name
+    }
+```
