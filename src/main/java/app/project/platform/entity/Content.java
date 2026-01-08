@@ -6,6 +6,8 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -21,20 +23,31 @@ public class Content extends BaseTimeEntity {
     @Column(columnDefinition = "TEXT")
     private String description;
 
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(nullable = false)
+    private Category category;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(nullable = false)
     private Member author;
+    
+    private String thumbnail_url;
+
+    @OneToMany(orphanRemoval = true)
+    private List<Comment> comments;
 
     @Builder
-    public Content(String title, String description, Member author) {
+    public Content(String title, String description, Member author, Category category) {
         this.title = title;
         this.description = description;
         this.author = author;
+        this.category = category;
     }
 
-    public void update(String title, String description) {
+    public void update(String title, String description, Category category) {
         this.title = title;
         this.description = description;
+        this.category = category;
     }
 
 }

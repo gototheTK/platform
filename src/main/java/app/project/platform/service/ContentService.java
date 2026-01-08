@@ -1,6 +1,5 @@
 package app.project.platform.service;
 
-import app.project.platform.domain.ApiResponse;
 import app.project.platform.domain.dto.ContentDto;
 import app.project.platform.domain.dto.MemberDto;
 import app.project.platform.domain.dto.ModifyRequestDto;
@@ -12,7 +11,6 @@ import app.project.platform.exception.BusinessException;
 import app.project.platform.repository.ContentRepository;
 import app.project.platform.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
-import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,12 +30,13 @@ public class ContentService {
     @Transactional
     public Long write(MemberDto memberDto, WriteRequestDto writeRequestDto) {
 
-        Member member = memberRepository.findById(memberDto.getId()).orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+        Member author = memberRepository.findById(memberDto.getId()).orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
 
         Content content = Content.builder()
                 .title(writeRequestDto.getTitle())
                 .description(writeRequestDto.getDescription())
-                .author(member)
+                .author(author)
+                .category(writeRequestDto.getCategory())
                 .build();
 
         return ContentDto.from(contentRepository.save(content)).getId();
@@ -51,7 +50,7 @@ public class ContentService {
 
         if(!memberDto.getId().equals(content.getAuthor().getId())) throw new BusinessException(ErrorCode.UNAUTHORIZED);
 
-        content.update(modifyRequestDto.getTitle(), modifyRequestDto.getDescription());
+        content.update(modifyRequestDto.getTitle(), modifyRequestDto.getDescription(), modifyRequestDto.getCategory());
 
         return content.getId();
 
