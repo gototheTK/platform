@@ -34,7 +34,26 @@ public enum ErrorCode {
     // =================================================================
     CONTENT_NOT_FOUND(HttpStatus.NOT_FOUND, "P001", "해당 게시글을 찾을 수 없습니다."),
     CONTENT_WRITER_MISMATCH(HttpStatus.FORBIDDEN, "P002", "해당 게시글을 수정/삭제할 권한이 없습니다."),
-    ALREADY_DELETED_CONTENT(HttpStatus.BAD_REQUEST, "P003", "이미 삭제된 게시글입니다.");
+    ALREADY_DELETED_CONTENT(HttpStatus.BAD_REQUEST, "P003", "이미 삭제된 게시글입니다."),
+
+    // =================================================================
+    // 4. Category (카테고리 관련) - T001 ~ T099
+    // =================================================================
+    CATEGORY_NOT_FOUND(HttpStatus.NOT_FOUND, "T001", "존재하지 않는 카테고리입니다."),
+
+    // =================================================================
+    // 5. Comment (댓글 관련) - R001 ~ R099
+    // =================================================================
+    COMMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "R001", "해당 댓글을 찾을 수 없습니다."),
+    COMMENT_WRITER_MISMATCH(HttpStatus.FORBIDDEN, "R002", "해당 댓글을 수정/삭제할 권한이 없습니다."),
+    CANNOT_REPLY_TO_DELETED(HttpStatus.BAD_REQUEST, "R003", "삭제된 댓글에는 답글을 달 수 없습니다."),
+
+    // =================================================================
+    // 6. File/Image (파일 업로드 관련) - F001 ~ F099
+    // =================================================================
+    FILE_UPLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "F001", "파일 업로드 중 오류가 발생했습니다."),
+    INVALID_FILE_EXTENSION(HttpStatus.BAD_REQUEST, "F002", "지원하지 않는 파일 형식입니다. (예: jpg, png만 가능)"),
+    FILE_NOT_FOUND(HttpStatus.NOT_FOUND, "F003", "해당 파일을 찾을 수 없습니다.");
 
     // 필드 정의
     private final HttpStatus status; // HTTP 상태 코드 (200, 400, 404 등)

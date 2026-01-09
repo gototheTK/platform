@@ -13,7 +13,7 @@ public class WriteRequestDto {
 
     private String description;
 
-    @NotNull()
-    private Category category;
+    @NotNull
+    private Long categoryId;
 
 }

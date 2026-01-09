@@ -20,6 +20,8 @@ public class ContentDto {
 
     private String nickname;
 
+    private Long categoryId;
+
     private LocalDateTime createdDate;
 
     private LocalDateTime lastModifiedDate;

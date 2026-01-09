@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Entity
@@ -30,11 +31,14 @@ public class Content extends BaseTimeEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(nullable = false)
     private Member author;
-    
+
     private String thumbnail_url;
 
     @OneToMany(orphanRemoval = true)
     private List<Comment> comments;
+
+    @OneToMany(orphanRemoval = true)
+    private List<ContentImage> contentImages = new ArrayList<>();
 
     @Builder
     public Content(String title, String description, Member author, Category category) {
