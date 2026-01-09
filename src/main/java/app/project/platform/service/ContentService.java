@@ -46,6 +46,8 @@ public class ContentService {
 
         Category category = categoryRepository.findById(writeRequestDto.getCategoryId()).orElseThrow(() -> new BusinessException(ErrorCode.CATEGORY_NOT_FOUND));
 
+        Category category = categoryRepository.findById(writeRequestDto.getCategoryId()).orElseThrow(() -> new BusinessException(ErrorCode.CATEGORY_NOT_FOUND));
+
         Member author = memberRepository.findById(memberDto.getId()).orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
 
         Content content = Content.builder()
