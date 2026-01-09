@@ -3,6 +3,7 @@ package app.project.platform.controller;
 import app.project.platform.domain.ApiResponse;
 import app.project.platform.domain.dto.CommentRequestDto;
 import app.project.platform.domain.dto.CommentResponseDto;
+import app.project.platform.domain.dto.MemberDto;
 import app.project.platform.domain.type.ErrorCode;
 import app.project.platform.entity.Member;
 import app.project.platform.exception.BusinessException;
@@ -22,12 +23,12 @@ public class CommentController {
     @PostMapping
     public ResponseEntity<ApiResponse<CommentResponseDto>> create(
             @RequestBody @Valid CommentRequestDto commentRequestDto,
-            @SessionAttribute(name = "LOGIN_MEMBER", required = false) Member member
+            @SessionAttribute(name = "LOGIN_MEMBER", required = false) MemberDto memberDto
     ) {
 
-        if (member == null) throw new BusinessException(ErrorCode.MEMBER_NOT_FOUND);
+        if (memberDto == null) throw new BusinessException(ErrorCode.MEMBER_NOT_FOUND);
 
-        CommentResponseDto commentResponseDto = commentService.create(member, commentRequestDto);
+        CommentResponseDto commentResponseDto = commentService.create(memberDto, commentRequestDto);
 
         return ResponseEntity
                 .ok(ApiResponse.success(commentResponseDto));
@@ -38,12 +39,12 @@ public class CommentController {
     public ResponseEntity<ApiResponse<CommentResponseDto>> update(
             @PathVariable(name = "id") Long id,
             @RequestBody @Valid CommentRequestDto commentRequestDto,
-            @SessionAttribute(name = "LOGIN_MEMBER", required = false) Member member
+            @SessionAttribute(name = "LOGIN_MEMBER", required = false) MemberDto memberDto
     ) {
 
-        if (member == null) throw new BusinessException(ErrorCode.MEMBER_NOT_FOUND);
+        if (memberDto == null) throw new BusinessException(ErrorCode.MEMBER_NOT_FOUND);
 
-        CommentResponseDto commentResponseDto = commentService.update(member, commentRequestDto);
+        CommentResponseDto commentResponseDto = commentService.update(memberDto, commentRequestDto);
 
         return ResponseEntity
                 .ok(ApiResponse.success(commentResponseDto));
@@ -53,12 +54,12 @@ public class CommentController {
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<CommentResponseDto>> delete(
             @PathVariable(name = "id") Long id,
-            @SessionAttribute(name = "LOGIN_MEMBER", required = false) Member member
+            @SessionAttribute(name = "LOGIN_MEMBER", required = false) MemberDto memberDto
     ) {
 
-        if (member == null) throw new BusinessException(ErrorCode.UNAUTHORIZED);
+        if (memberDto == null) throw new BusinessException(ErrorCode.UNAUTHORIZED);
 
-        commentService.delete(member, id);
+        commentService.delete(memberDto, id);
 
         return ResponseEntity
                 .ok(ApiResponse.success(null));

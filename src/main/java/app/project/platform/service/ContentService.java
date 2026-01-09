@@ -60,7 +60,7 @@ public class ContentService {
     }
 
     @Transactional
-    public Long modify(MemberDto memberDto, ModifyRequestDto modifyRequestDto) {
+    public Long update(MemberDto memberDto, ModifyRequestDto modifyRequestDto) {
 
         Content content = contentRepository.findById(modifyRequestDto.getId()).orElseThrow(() -> new BusinessException(ErrorCode.CONTENT_NOT_FOUND));
 
@@ -73,7 +73,12 @@ public class ContentService {
     }
 
     @Transactional
-    public void delete(Long id) {
+    public void delete(MemberDto memberDto, Long id) {
+
+        Content content = contentRepository.findById(id).orElseThrow(() -> new BusinessException(ErrorCode.CONTENT_NOT_FOUND));
+
+        if (!memberDto.getId().equals(content.getAuthor().getId())) throw new BusinessException(ErrorCode.UNAUTHORIZED);
+
         contentRepository.deleteById(id);
     }
 

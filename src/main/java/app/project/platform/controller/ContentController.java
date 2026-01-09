@@ -71,7 +71,7 @@ public class ContentController {
 
         if (memberDto == null) throw new BusinessException(ErrorCode.UNAUTHORIZED);
 
-        Long contentId = contentService.modify(memberDto, modifyRequestDto);
+        Long contentId = contentService.update(memberDto, modifyRequestDto);
 
         return ResponseEntity
                 .status(HttpStatus.OK)
@@ -80,9 +80,13 @@ public class ContentController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<Void>> delete (
-            @PathVariable(name = "id", required = true) Long id
+            @PathVariable(name = "id") Long id,
+            @SessionAttribute(name = "LOGIN_MEMBER", required = false) MemberDto memberDto
     ) {
-        contentService.delete(id);
+
+        if (memberDto == null)  throw new BusinessException(ErrorCode.UNAUTHORIZED);
+
+        contentService.delete(memberDto, id);
 
         return ResponseEntity
                 .ok(ApiResponse.success(null));

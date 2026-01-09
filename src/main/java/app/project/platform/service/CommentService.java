@@ -2,6 +2,7 @@ package app.project.platform.service;
 
 import app.project.platform.domain.dto.CommentRequestDto;
 import app.project.platform.domain.dto.CommentResponseDto;
+import app.project.platform.domain.dto.MemberDto;
 import app.project.platform.domain.type.ErrorCode;
 import app.project.platform.entity.Comment;
 import app.project.platform.entity.Content;
@@ -9,6 +10,7 @@ import app.project.platform.entity.Member;
 import app.project.platform.exception.BusinessException;
 import app.project.platform.repository.CommentRepository;
 import app.project.platform.repository.ContentRepository;
+import app.project.platform.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,14 +19,16 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class CommentService {
 
+    private final MemberRepository memberRepository;
+
     private final ContentRepository contentRepository;
 
     private final CommentRepository commentRepository;
 
     @Transactional
-    public CommentResponseDto create(Member member, CommentRequestDto commentRequestDto) {
+    public CommentResponseDto create(MemberDto memberDto, CommentRequestDto commentRequestDto) {
 
-        if (member == null) throw new BusinessException(ErrorCode.UNAUTHORIZED);
+        Member member = memberRepository.findById(memberDto.getId()).orElseThrow(() -> new BusinessException(ErrorCode.UNAUTHORIZED));
 
         Content content = contentRepository.findById(commentRequestDto.getContentId()).orElseThrow(() -> new BusinessException(ErrorCode.CONTENT_NOT_FOUND));
 
@@ -49,13 +53,11 @@ public class CommentService {
     }
 
     @Transactional
-    public CommentResponseDto update(Member member, CommentRequestDto commentRequestDto) {
-
-        if (member == null) throw new BusinessException(ErrorCode.UNAUTHORIZED);
+    public CommentResponseDto update(MemberDto memberDto, CommentRequestDto commentRequestDto) {
 
         Comment comment = commentRepository.findById(commentRequestDto.getId()).orElseThrow(() -> new BusinessException(ErrorCode.COMMENT_NOT_FOUND));
 
-        if (!comment.getAuthor().getId().equals(member.getId())) throw new BusinessException(ErrorCode.COMMENT_WRITER_MISMATCH);
+        if (!comment.getAuthor().getId().equals(memberDto.getId())) throw new BusinessException(ErrorCode.COMMENT_WRITER_MISMATCH);
 
         comment.update(commentRequestDto.getText());
 
@@ -64,13 +66,11 @@ public class CommentService {
     }
 
     @Transactional
-    public void delete(Member member, Long id) {
-
-        if (member == null) throw new BusinessException(ErrorCode.UNAUTHORIZED);
+    public void delete(MemberDto memberDto, Long id) {
 
         Comment comment = commentRepository.findById(id).orElseThrow(() -> new BusinessException(ErrorCode.COMMENT_NOT_FOUND));
 
-        if (!comment.getAuthor().getId().equals(member.getId())) throw new BusinessException(ErrorCode.COMMENT_WRITER_MISMATCH);
+        if (!comment.getAuthor().getId().equals(memberDto.getId())) throw new BusinessException(ErrorCode.COMMENT_WRITER_MISMATCH);
 
         commentRepository.deleteById(id);
     }
