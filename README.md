@@ -75,6 +75,8 @@ erDiagram
     }
 ```
 
+---
+
 ## API Response Format
 
 모든 API 응답은 아래와 같은 통일된 JSON 구조를 따릅니다.
@@ -100,6 +102,7 @@ erDiagram
 }
 ```
 
+---
 
 ## Key Technical Decisions
 
@@ -126,3 +129,10 @@ erDiagram
     @SessionAttribute(name = "LOGIN_MEMBER") MemberDto member // 세션 자동 주입
     ) { ... }
    ```
+   
+---
+
+## Feedback From AI(Gemini)
+
+- CreatedDate와 LastModifiedDate는 어노테이션이다. 그러니 변수 타입으로 쓰는걸 주의하자.
+- @ManyToOne과 @Column을 함께 쓸 수 없다. 그러니 @JoinColumn을 대신 쓰도록하자.

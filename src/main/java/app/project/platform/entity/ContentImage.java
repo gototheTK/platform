@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 @Entity
 @Getter
 @NoArgsConstructor
-public class contentImage extends BaseTimeEntity {
+public class ContentImage extends BaseTimeEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -25,7 +25,7 @@ public class contentImage extends BaseTimeEntity {
     private String originalUrl;
 
     @Builder
-    public contentImage(Content content, String fileUrl, String originalUrl) {
+    public ContentImage(Content content, String fileUrl, String originalUrl) {
         this.content = content;
         this.fileUrl = fileUrl;
         this.originalUrl = originalUrl;

@@ -20,27 +20,31 @@ public class Comment extends BaseTimeEntity {
     @Column(columnDefinition = "TEXT")
     private String text;
 
-    @ManyToOne(fetch = FetchType.EAGER)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(nullable = false)
     private Content content;
 
-    @ManyToOne(fetch = FetchType.EAGER)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(nullable = false)
     private Member author;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "parent_id")
-    private Content parent;
+    private Comment parent;
 
     @OneToMany(mappedBy = "parent", orphanRemoval = true)
     private List<Content> children = new ArrayList<>();
 
     @Builder
-    public Comment(String text, Content content, Member author, Content parent) {
+    public Comment(String text, Content content, Member author, Comment parent) {
         this.text = text;
         this.content = content;
         this.author = author;
         this.parent = parent;
+    }
+
+    public void update(String text) {
+        this.text = text;
     }
 
 }
