@@ -72,7 +72,7 @@ public class CommentService {
 
         if (!comment.getAuthor().getId().equals(memberDto.getId())) throw new BusinessException(ErrorCode.COMMENT_WRITER_MISMATCH);
 
-        commentRepository.deleteById(id);
+        commentRepository.delete(comment);
     }
 
 }

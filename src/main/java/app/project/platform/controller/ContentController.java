@@ -15,8 +15,12 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/content")
@@ -47,15 +51,17 @@ public class ContentController {
                 .ok(ApiResponse.success(content));
     }
 
-    @PostMapping
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<Long>> create(
-            @RequestBody @Valid WriteRequestDto writeRequestDto,
+            @RequestPart(value = "dto") @Valid WriteRequestDto writeRequestDto,
+            @RequestPart(value = "thumbnail", required = false) MultipartFile thumbnail,
+            @RequestPart(value = "images", required = false) List<MultipartFile> images,
             @SessionAttribute(name = "LOGIN_MEMBER", required = false) MemberDto memberDto
     ) {
 
         if (memberDto == null) throw new BusinessException(ErrorCode.UNAUTHORIZED);
 
-        Long contentId = contentService.create(memberDto, writeRequestDto);
+        Long contentId = contentService.create(memberDto, writeRequestDto, thumbnail, images);
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)

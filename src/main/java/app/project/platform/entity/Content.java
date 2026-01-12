@@ -41,7 +41,7 @@ public class Content extends BaseTimeEntity {
     private List<ContentImage> contentImages = new ArrayList<>();
 
     @Builder
-    public Content(String title, String description, Member author, Category category) {
+    public Content(String title, String description, Member author, Category category, String thumbnail_url) {
         this.title = title;
         this.description = description;
         this.author = author;
@@ -52,6 +52,7 @@ public class Content extends BaseTimeEntity {
         this.title = title;
         this.description = description;
         this.category = category;
+        this.thumbnail_url = thumbnail_url;
     }
 
 }
