@@ -2,25 +2,21 @@ package app.project.platform.entity;
 
 import app.project.platform.domain.type.Role;
 import jakarta.persistence.*;
-import jakarta.validation.constraints.Email;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-import java.io.Serializable;
-
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class Member implements Serializable {
+public class Member extends BaseTimeEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.AUTO)
     private Long id;
 
     @Column(nullable = false, unique = true)
-    @Email
     private String email;
 
     @Column(nullable = false)
@@ -36,6 +32,12 @@ public class Member implements Serializable {
     @Builder
     public Member(String email, String password, String nickname, Role role) {
         this.email = email;
+        this.password = password;
+        this.nickname = nickname;
+        this.role = role;
+    }
+
+    public void update(String password, String nickname, Role role) {
         this.password = password;
         this.nickname = nickname;
         this.role = role;

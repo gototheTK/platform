@@ -1,7 +1,6 @@
 package app.project.platform.domain;
 
-
-import app.project.platform.domain.type.ErrorCode;
+import app.project.platform.domain.code.ErrorCode;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 

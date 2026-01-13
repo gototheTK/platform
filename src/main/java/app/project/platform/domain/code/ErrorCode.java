@@ -1,4 +1,4 @@
-package app.project.platform.domain.type;
+package app.project.platform.domain.code;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;

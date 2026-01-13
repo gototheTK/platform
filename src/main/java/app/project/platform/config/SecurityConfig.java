@@ -11,6 +11,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration
+// @Component를 쓰면, 내부 빈 메서드를 사용하면 의존 객체를 주입하지않고 새로 생성함. 그러면 싱글톤 패턴이 깨짐
 @EnableWebSecurity
 public class SecurityConfig {
 
@@ -23,22 +24,22 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 
         http
-                .csrf(AbstractHttpConfigurer::disable) // CSRF 보안 끄기
-                .formLogin(AbstractHttpConfigurer::disable) // 기본 로그인 폼 끄기
-                .httpBasic(AbstractHttpConfigurer::disable) // HTTP Basic 인증 끄기
-                .headers(headers -> headers.frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin))
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(
-                                "/h2-console/**",
-                                "/api/v1/members/signup",
-                                "/api/v1/members/login",
-                                "/swagger-ui/**",
-                                "/v3/api-docs/**"
-                        ).permitAll()
-                        .anyRequest().permitAll()
-                );
+            .csrf(AbstractHttpConfigurer::disable)
+            .formLogin(AbstractHttpConfigurer::disable)
+            .httpBasic(AbstractHttpConfigurer::disable)
+            .headers(header -> header.frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin))
+            .authorizeHttpRequests(auth -> auth
+                    .requestMatchers(
+                            "/h2-console/**",
+                            "/api/v1/**",
+                            "/swagger-ui/**",
+                            "/v3/api-docs/**"
+                    ).permitAll()
+                    .anyRequest().authenticated()
+            );
 
         return http.build();
+
     }
 
 }

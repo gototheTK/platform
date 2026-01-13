@@ -7,14 +7,14 @@ import lombok.Getter;
 @Getter
 public class SignupRequestDto {
 
-    @NotBlank(message = "{member.required.email")
+    @NotBlank(message = "{member.required.username}")
     @Email(message = "{member.error.emailFormat}")
     private String email;
 
     @NotBlank(message = "{member.required.password}")
     private String password;
 
-    @NotBlank
+    @NotBlank(message = "{member.required.nickname}")
     private String nickname;
 
 }
