@@ -16,13 +16,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/v1/member/")
+@RequestMapping("/api/v1/member")
 @RequiredArgsConstructor
 public class MemberController {
 
     private final MemberService memberService;
 
-    @PostMapping("signup")
+    @PostMapping("/signup")
     public ResponseEntity<ApiResponse<Long>> signup(@RequestBody @Valid SignupRequestDto signupRequestDto) {
 
         Long memberId = memberService.signup(signupRequestDto);
@@ -31,7 +31,7 @@ public class MemberController {
                 .ok(ApiResponse.success(memberId));
     }
 
-    @PostMapping("login")
+    @PostMapping("/login")
     public ResponseEntity<ApiResponse<MemberDto>> login(
             @RequestBody @Valid LoginRequestDto loginRequestDto,
             HttpServletRequest httpServletRequest

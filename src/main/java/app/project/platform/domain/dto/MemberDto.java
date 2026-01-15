@@ -1,6 +1,5 @@
 package app.project.platform.domain.dto;
 
-import app.project.platform.domain.type.Role;
 import app.project.platform.entity.Member;
 import lombok.AllArgsConstructor;
 import lombok.Builder;

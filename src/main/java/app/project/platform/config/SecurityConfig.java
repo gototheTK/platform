@@ -12,6 +12,8 @@ import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration
 // @Component를 쓰면, 내부 빈 메서드를 사용하면 의존 객체를 주입하지않고 새로 생성함. 그러면 싱글톤 패턴이 깨짐
+// 싱긍톤 패턴이 깨지면 passwordEncoder를 내부에서 여러분 호출하면, 새로운 객체를 만들게되고
+// 그러면 메모리 낭비가 심해지거나 로직오류를 발생할 우려가 있음
 @EnableWebSecurity
 public class SecurityConfig {
 

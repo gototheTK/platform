@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
 
 @MappedSuperclass
 @Getter
-@EntityListeners(AuditingEntityListener.class) //
+@EntityListeners(AuditingEntityListener.class) // Entity를 감시하고, 이벤트를 감지하는 리스너를 등록합니다.
 public class BaseTimeEntity {
 
     @CreatedDate

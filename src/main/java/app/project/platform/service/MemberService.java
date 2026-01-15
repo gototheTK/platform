@@ -45,6 +45,8 @@ public class MemberService {
         return memberRepository.save(member).getId();
     }
 
+    // 조회 전용 트랜잭션에서는 JPA가 스냅샷을 만들지 않고, Dirty Checking(변경 감지)을 수행하지 않아 메모리와 성능이 최적화
+    // 리플리카 DB(Slave) 부하 분산 효과도 있습니다.
     @Transactional(readOnly = true)
     public MemberDto login(LoginRequestDto loginRequestDto) {
 
