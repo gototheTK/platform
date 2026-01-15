@@ -7,7 +7,6 @@ import lombok.Getter;
 @Getter
 public class CommentRequestDto {
 
-    @NotNull
     private Long id;
 
     @NotNull

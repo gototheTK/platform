@@ -51,7 +51,9 @@ public class ContentService {
         return ContentResponseDto.of(content);
     }
 
-    @Transactional
+    // 스프링의 @Transactional은 기본적으로 Unchecked Exception(RuntimeException)만 롤백한다.
+    // Checked Exception을 롤백하기 위해서는 rollbackFor옵션을 지정하여 주어야한다.
+    @Transactional(rollbackFor = Exception.class)
     public Long create (ContentRequestDto contentRequestDto, List<MultipartFile> files, MemberDto memberDto) throws IOException {
 
         Member member = memberRepository.findById(memberDto.getId()).orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
@@ -78,7 +80,9 @@ public class ContentService {
         return content.getId();
     }
 
-    @Transactional
+    // 스프링의 @Transactional은 기본적으로 Unchecked Exception(Runtime Exception)만 롤백한다.
+    // Checked Exception 예외 발생 시 롤백을 하기 위해서는, rollbackFor옵션을 지정하여 주어야 한다.
+    @Transactional(rollbackFor = Exception.class)
     public ContentResponseDto update (Long id, ContentRequestDto contentRequestDto, List<MultipartFile> files, MemberDto memberDto) throws IOException {
 
         Content content = contentRepository.findById(id).orElseThrow(() -> new BusinessException(ErrorCode.CONTENT_NOT_FOUND));
@@ -87,10 +91,15 @@ public class ContentService {
             throw new BusinessException(ErrorCode.UNAUTHORIZED);
         }
 
+        List<ContentImage> images = content.getFiles();
+        
+        // 1. 디스크에서 파일 먼저 다 지우기
         for (ContentImage file : content.getFiles()) {
             fileHandler.deleteFile(file.getStoreFilename());
-            content.getFiles().remove(file);
         }
+
+        // 리스트 비우기
+        images.clear();
 
         for (MultipartFile file : files) {
             ContentImage contentImage = fileHandler.storeFile(file, content);

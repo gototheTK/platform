@@ -40,8 +40,7 @@ public class ContentController {
 
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<ContentResponseDto>> read(
-            @PathVariable(name = "id") Long id,
-            @RequestBody @Valid ContentRequestDto contentRequestDto) {
+            @PathVariable(name = "id") Long id) {
 
         ContentResponseDto contentResponseDto = contentService.read(id);
 
