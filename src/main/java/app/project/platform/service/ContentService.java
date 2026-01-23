@@ -66,7 +66,7 @@ public class ContentService {
                 .author(member)
                 .build();
 
-        contentRepository.save(content);
+        Content savedContent = contentRepository.save(content);
 
         // 2. 파일 저장
         if (!files.isEmpty()) {
@@ -77,7 +77,7 @@ public class ContentService {
             }
         }
 
-        return content.getId();
+        return savedContent.getId();
     }
 
     // 스프링의 @Transactional은 기본적으로 Unchecked Exception(Runtime Exception)만 롤백한다.

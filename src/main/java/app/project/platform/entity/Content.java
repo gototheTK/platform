@@ -48,6 +48,15 @@ public class Content extends BaseTimeEntity {
         this.category = category;
     }
 
+    @Builder
+    public Content (Long id, String title, String description, Member author, ContentCategory category) {
+        this.id = id;
+        this.title = title;
+        this.description = description;
+        this.author = author;
+        this.category = category;
+    }
+
     public void update(String title, String description, ContentCategory category) {
         this.title = title;
         this.description = description;

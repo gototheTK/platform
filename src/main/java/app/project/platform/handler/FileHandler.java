@@ -26,7 +26,7 @@ public class FileHandler {
 
         String originalFilename = multipartFile.getOriginalFilename();
 
-        String storeFilename = UUID.randomUUID() + "-" + getFullPath(originalFilename);
+        String storeFilename = UUID.randomUUID() + "-" + originalFilename;
 
         // 디스크에 저장
         multipartFile.transferTo(new File(storeFilename));
