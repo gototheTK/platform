@@ -1,7 +1,8 @@
 package app.project.platform.service;
 
 import app.project.platform.domain.code.ErrorCode;
-import app.project.platform.domain.dto.ContentRequestDto;
+import app.project.platform.domain.dto.ContentCreateRequestDto;
+import app.project.platform.domain.dto.ContentUpdateRequestDto;
 import app.project.platform.domain.dto.MemberDto;
 import app.project.platform.domain.type.ContentCategory;
 import app.project.platform.domain.type.Role;
@@ -23,7 +24,6 @@ import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -61,7 +61,7 @@ public class ContentServiceTest {
         String writerNickname = "writer";
 
         // given
-        ContentRequestDto contentRequestDto = ContentRequestDto.builder()
+        ContentCreateRequestDto contentCreateRequestDto = ContentCreateRequestDto.builder()
                 .title("test_title")
                 .description("test_description")
                 .category(ContentCategory.CARTOON.getName())
@@ -90,7 +90,7 @@ public class ContentServiceTest {
                 .author(member)
                 .title("test_title")
                 .description("test_description")
-                .category(ContentCategory.from(contentRequestDto.getCategory()))
+                .category(ContentCategory.from(contentCreateRequestDto.getCategory()))
                 .build();
 
         ReflectionTestUtils.setField(content, "id", 1L);
@@ -109,7 +109,7 @@ public class ContentServiceTest {
         given(contentImageRepository.save(contentImage)).willReturn(contentImage);
 
         //  when
-        Long savedId = contentService.create(contentRequestDto, files, memberDto);
+        Long savedId = contentService.create(contentCreateRequestDto, files, memberDto);
 
         //  then
         //  1. 캡쳐(납치) 도구 준비
@@ -141,7 +141,7 @@ public class ContentServiceTest {
 
         Long id = 1L;
 
-        ContentRequestDto contentRequestDto = ContentRequestDto.builder()
+        ContentUpdateRequestDto contentRequestDto = ContentUpdateRequestDto.builder()
                 .id(id)
                 .category(ContentCategory.NOVEL.getName())
                 .title("test_title")

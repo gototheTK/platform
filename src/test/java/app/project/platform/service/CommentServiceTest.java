@@ -1,5 +1,6 @@
 package app.project.platform.service;
 
+import app.project.platform.domain.code.ErrorCode;
 import app.project.platform.domain.dto.CommentRequestDto;
 import app.project.platform.domain.dto.CommentResponseDto;
 import app.project.platform.domain.dto.MemberDto;
@@ -8,9 +9,12 @@ import app.project.platform.domain.type.Role;
 import app.project.platform.entity.Comment;
 import app.project.platform.entity.Content;
 import app.project.platform.entity.Member;
+import app.project.platform.exception.BusinessException;
 import app.project.platform.repository.CommentRepository;
 import app.project.platform.repository.ContentRepository;
 import app.project.platform.repository.MemberRepository;
+import org.assertj.core.api.ThrowableAssert;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -42,6 +46,9 @@ public class CommentServiceTest {
     @Mock
     CommentRepository commentRepository;
 
+    @BeforeEach
+    void setUp () {}
+
     @Test
     void 댓글_작성() {
 
@@ -58,31 +65,11 @@ public class CommentServiceTest {
                 .nickname("test")
                 .build();
 
-        Member member = Member.builder()
-                    .email(memberDto.getEmail())
-                    .password("test")
-                    .nickname("test")
-                    .role(Role.USER)
-                    .build();
+        Member member = createMember(memberDto.getId(), memberDto.getNickname());
 
-        ReflectionTestUtils.setField(member, "id", 1L);
+        Content content = createContent(1L, member);
 
-        Content content = Content.builder()
-                    .title("test")
-                    .description("description")
-                    .category(ContentCategory.CARTOON)
-                    .author(member)
-                    .build();
-
-        ReflectionTestUtils.setField(content, "id", 1L);
-
-        Comment expectedSavedComment = Comment.builder()
-                .author(member)
-                .text(commentRequestDto.getText())
-                .content(content)
-                .build();
-
-        ReflectionTestUtils.setField(expectedSavedComment, "id", 1L);
+        Comment expectedSavedComment = createComment(1L, content, null, member, commentRequestDto.getText());
 
         //given
         given(memberRepository.findById(memberDto.getId())).willReturn(Optional.of(member));
@@ -127,41 +114,18 @@ public class CommentServiceTest {
                 .nickname("test")
                 .build();
 
-        Member member = Member.builder()
-                .email(memberDto.getEmail())
-                .password("password")
-                .nickname(memberDto.getNickname())
-                .role(Role.USER)
-                .build();
+        Member writer = createMember(memberDto.getId(), memberDto.getNickname());
 
-        ReflectionTestUtils.setField(member, "id", 1L);
+        Member stranger = createMember(2L, "stranger");
 
-        Content content = Content.builder()
-                .title("test_title")
-                .description("test_description")
-                .author(member)
-                .category(ContentCategory.CARTOON)
-                .build();
+        Content content = createContent(1L, writer);
 
-        ReflectionTestUtils.setField(content, "id", 1L);
+        Comment parent = createComment(1L, content, null, stranger, "test_parent");
 
-        Comment parent = Comment.builder()
-                .parent(null)
-                .text("test_parent")
-                .content(content)
-                .author(null)
-                .build();
-        ReflectionTestUtils.setField(parent, "id", commentRequestDto.getParentId());
-
-        Comment comment = Comment.builder()
-                .parent(parent)
-                .text(commentRequestDto.getText())
-                .content(content)
-                .author(member)
-                .build();
+        Comment comment = createComment(2L, content, parent, writer, commentRequestDto.getText());
 
         // given
-        given(memberRepository.findById(memberDto.getId())).willReturn(Optional.of(member));
+        given(memberRepository.findById(memberDto.getId())).willReturn(Optional.of(writer));
         given(contentRepository.findById(commentRequestDto.getContentId())).willReturn(Optional.of(content));
         given(commentRepository.findById(commentRequestDto.getParentId())).willReturn(Optional.of(parent));
 
@@ -189,6 +153,100 @@ public class CommentServiceTest {
         assertThat(commentResponseDto.getText()).isEqualTo(commentRequestDto.getText());
         assertThat(commentResponseDto.getAuthor()).isEqualTo(memberDto.getNickname());
 
+    }
+
+    @Test
+    void 댓글_수정_실패_권한없음() {
+
+        Long commentId = 1L;
+
+        MemberDto memberDto = MemberDto.builder().id(1L).build();
+
+        Member writer = createMember(1L, "writer");
+        Member stranger = createMember(2L, "stranger");
+
+        Content content = createContent(1L, writer);
+
+        CommentRequestDto commentRequestDto = CommentRequestDto.builder()
+                .text("test")
+                .build();
+
+        Comment comment = createComment(1L, content, null, stranger, stranger.getNickname() + "의 테스트");
+
+        //  given
+        given(commentRepository.findById(commentId)).willReturn(Optional.of(comment));
+
+        //  when & then
+        assertPermissionDenied(() -> commentService.update(commentId, commentRequestDto, memberDto));
+    }
+
+    @Test
+    void 댓글_삭제_실패_권한없음() {
+
+        Long commentId = 1L;
+
+        MemberDto memberDto = MemberDto.builder().id(1L).build();
+
+        Member writer = createMember(1L, "writer");
+        Member stranger = createMember(2L, "stranger");
+
+        Content content = createContent(1L, writer);
+
+        Comment comment = createComment(1L, content, null, stranger, stranger.getNickname() + "의 테스트");
+
+        //  given
+        given(commentRepository.findById(commentId)).willReturn(Optional.of(comment));
+
+        //  when & then
+        assertPermissionDenied(() -> commentService.delete(commentId, memberDto));
+
+    }
+
+    private Member createMember(Long id, String nickname) {
+        Member member = Member.builder()
+                .email(nickname + "@test.com")
+                .password("password")
+                .nickname(nickname)
+                .role(Role.USER)
+                .build();
+
+        ReflectionTestUtils.setField(member, "id", id);
+
+        return member;
+    }
+
+    private Content createContent(Long id, Member author) {
+        Content content = Content.builder()
+                .author(author)
+                .title(author.getNickname() + "의 게시글")
+                .description("test_description")
+                .category(ContentCategory.CARTOON)
+                .build();
+
+        ReflectionTestUtils.setField(content, "id", id);
+
+        return content;
+
+    }
+
+    private Comment createComment(Long id, Content content, Comment parent, Member writer, String text) {
+        Comment comment = Comment.builder()
+                .author(writer)
+                .content(content)
+                .text(text)
+                .parent(parent)
+                .build();
+
+        ReflectionTestUtils.setField(comment, "id", id);
+
+        return comment;
+
+    }
+
+    private void assertPermissionDenied(ThrowableAssert.ThrowingCallable action) {
+        assertThatThrownBy(action)
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining(ErrorCode.COMMENT_WRITER_MISMATCH.getMessage());
     }
 
 }

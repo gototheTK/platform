@@ -1,11 +1,11 @@
 package app.project.platform.controller;
 
 import app.project.platform.domain.ApiResponse;
-import app.project.platform.domain.dto.ContentRequestDto;
+import app.project.platform.domain.dto.ContentCreateRequestDto;
+import app.project.platform.domain.dto.ContentUpdateRequestDto;
 import app.project.platform.domain.dto.ContentResponseDto;
 import app.project.platform.domain.dto.MemberDto;
 import app.project.platform.service.ContentService;
-import app.project.platform.service.MemberService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -27,8 +27,6 @@ public class ContentController {
 
     private final ContentService contentService;
 
-    private final MemberService memberService;
-
     @GetMapping
     public ResponseEntity<ApiResponse<Page<ContentResponseDto>>> list(
             @PageableDefault(size = 10, page = 0, direction = Sort.Direction.DESC, sort = "id") Pageable pageable) {
@@ -49,11 +47,11 @@ public class ContentController {
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<Long>> create(
-            @RequestPart(name = "request") @Valid ContentRequestDto contentRequestDto,
+            @RequestPart(name = "request") @Valid ContentCreateRequestDto contentCreateRequestDto,
             @RequestPart(name = "files") List<MultipartFile> files,
             @SessionAttribute(name = "LOGIN_MEMBER") MemberDto memberDto) throws IOException {
 
-        Long contentId = contentService.create(contentRequestDto, files, memberDto);
+        Long contentId = contentService.create(contentCreateRequestDto, files, memberDto);
 
         return ResponseEntity.ok(ApiResponse.success(contentId));
     }
@@ -61,11 +59,11 @@ public class ContentController {
     @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<ContentResponseDto>> update(
             @PathVariable(name = "id") Long id,
-            @RequestPart(name = "request") @Valid ContentRequestDto contentRequestDto,
+            @RequestPart(name = "request") @Valid ContentUpdateRequestDto contentUpdateRequestDto,
             @RequestPart(name = "files") List<MultipartFile> files,
             @SessionAttribute(name = "LOGIN_MEMBER") MemberDto memberDto) throws IOException {
 
-        ContentResponseDto contentResponseDto = contentService.update(id, contentRequestDto, files, memberDto);
+        ContentResponseDto contentResponseDto = contentService.update(id, contentUpdateRequestDto, files, memberDto);
 
         return ResponseEntity.ok(ApiResponse.success(contentResponseDto));
     }

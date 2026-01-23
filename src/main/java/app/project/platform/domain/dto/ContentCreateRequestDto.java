@@ -7,16 +7,14 @@ import lombok.Getter;
 
 @Getter
 @Builder
-public class ContentRequestDto {
-
-    @NotNull(message = "{content.required.id}")
-    private Long id;
+public class ContentCreateRequestDto {
 
     @NotBlank(message = "{content.required.title}")
     private String title;
 
     private String description;
 
+    @NotBlank(message = "{content.required.category}")
     private String category;
 
 }

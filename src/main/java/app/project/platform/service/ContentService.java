@@ -1,7 +1,8 @@
 package app.project.platform.service;
 
 import app.project.platform.domain.code.ErrorCode;
-import app.project.platform.domain.dto.ContentRequestDto;
+import app.project.platform.domain.dto.ContentCreateRequestDto;
+import app.project.platform.domain.dto.ContentUpdateRequestDto;
 import app.project.platform.domain.dto.ContentResponseDto;
 import app.project.platform.domain.dto.MemberDto;
 import app.project.platform.domain.type.ContentCategory;
@@ -54,15 +55,15 @@ public class ContentService {
     // 스프링의 @Transactional은 기본적으로 Unchecked Exception(RuntimeException)만 롤백한다.
     // Checked Exception을 롤백하기 위해서는 rollbackFor옵션을 지정하여 주어야한다.
     @Transactional(rollbackFor = Exception.class)
-    public Long create (ContentRequestDto contentRequestDto, List<MultipartFile> files, MemberDto memberDto) throws IOException {
+    public Long create (ContentCreateRequestDto contentCreateRequestDto, List<MultipartFile> files, MemberDto memberDto) throws IOException {
 
         Member member = memberRepository.findById(memberDto.getId()).orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
 
         // 1. 게시글 저장
         Content content = Content.builder()
-                .title(contentRequestDto.getTitle())
-                .description(contentRequestDto.getDescription())
-                .category(ContentCategory.from(contentRequestDto.getCategory()))
+                .title(contentCreateRequestDto.getTitle())
+                .description(contentCreateRequestDto.getDescription())
+                .category(ContentCategory.from(contentCreateRequestDto.getCategory()))
                 .author(member)
                 .build();
 
@@ -83,7 +84,7 @@ public class ContentService {
     // 스프링의 @Transactional은 기본적으로 Unchecked Exception(Runtime Exception)만 롤백한다.
     // Checked Exception 예외 발생 시 롤백을 하기 위해서는, rollbackFor옵션을 지정하여 주어야 한다.
     @Transactional(rollbackFor = Exception.class)
-    public ContentResponseDto update (Long id, ContentRequestDto contentRequestDto, List<MultipartFile> files, MemberDto memberDto) throws IOException {
+    public ContentResponseDto update (Long id, ContentUpdateRequestDto contentUpdateRequestDto, List<MultipartFile> files, MemberDto memberDto) throws IOException {
 
         Content content = contentRepository.findById(id).orElseThrow(() -> new BusinessException(ErrorCode.CONTENT_NOT_FOUND));
 
@@ -107,7 +108,7 @@ public class ContentService {
             content.getFiles().add(contentImage);
         }
 
-        content.update(contentRequestDto.getTitle(), contentRequestDto.getDescription(), ContentCategory.from(contentRequestDto.getCategory()));
+        content.update(contentUpdateRequestDto.getTitle(), contentUpdateRequestDto.getDescription(), ContentCategory.from(contentUpdateRequestDto.getCategory()));
 
         return ContentResponseDto.of(content);
 

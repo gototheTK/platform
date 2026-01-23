@@ -23,7 +23,7 @@ public class MemberService {
     private final MemberRepository memberRepository;
 
     @Transactional
-    public Long signup(SignupRequestDto signupRequestDto) {
+public Long signup(SignupRequestDto signupRequestDto) {
 
         // 이메일 중복 확인
         boolean isEmailDuplicate = memberRepository.findByEmail(signupRequestDto.getEmail()).isPresent();
