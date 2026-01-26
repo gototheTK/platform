@@ -2,11 +2,13 @@ package app.project.platform.domain.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import lombok.Builder;
-import lombok.Getter;
+import lombok.*;
 
 @Getter
 @Builder
+@ToString
+@NoArgsConstructor
+@AllArgsConstructor
 public class CommentRequestDto {
 
     private Long id;
@@ -14,7 +16,6 @@ public class CommentRequestDto {
     @NotNull
     private Long contentId;
 
-    @NotNull
     private Long parentId;
 
     @NotBlank

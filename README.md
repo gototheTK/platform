@@ -136,3 +136,15 @@ erDiagram
 
 - CreatedDate와 LastModifiedDate는 어노테이션이다. 그러니 변수 타입으로 쓰는걸 주의하자.
 - @ManyToOne과 @Column을 함께 쓸 수 없다. 그러니 @JoinColumn을 대신 쓰도록하자.
+
+
+## 오늘의 회고
+
+### 2026-01-23
+
+    - Problem: 글 수정 테스트시 MockMvc가 Multipart요청을 기본적으로 POST만 보내서 400/500 에러 발생.
+    - Solution : .with(req -> { req.setMethod("PUT"); return req;})를 사용하여 강제로 변경
+
+    - Insight: 생성과 수정은 요구하는 데이터가 다르므로, DTO를 분리하는것이 유지보수 관리에 유리한거같다
+
+    - Mistake : any()와 new ArrayList<>()를 섞어 써서 Mockito Stubbing 에러 발생 -> any()로 통일하거나 eq() 사용해야함.

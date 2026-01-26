@@ -43,8 +43,7 @@ public class ContentControllerTest {
     @Test
     void 글_생성 () throws Exception {
 
-        ContentUpdateRequestDto contentRequestDto = ContentUpdateRequestDto.builder()
-                .id(1L)
+        ContentCreateRequestDto requestDto = ContentCreateRequestDto.builder()
                 .title("test")
                 .description("description")
                 .category(ContentCategory.CARTOON.getName())
@@ -59,7 +58,7 @@ public class ContentControllerTest {
                 "request",
                 "",
                 "application/json",
-                objectMapper.writeValueAsString(contentRequestDto).getBytes(StandardCharsets.UTF_8)
+                objectMapper.writeValueAsString(requestDto).getBytes(StandardCharsets.UTF_8)
         );
 
         MockMultipartFile files = new MockMultipartFile(
