@@ -2,8 +2,8 @@ package app.project.platform.controller;
 
 import app.project.platform.domain.ApiResponse;
 import app.project.platform.domain.dto.ContentCreateRequestDto;
-import app.project.platform.domain.dto.ContentUpdateRequestDto;
 import app.project.platform.domain.dto.ContentResponseDto;
+import app.project.platform.domain.dto.ContentUpdateRequestDto;
 import app.project.platform.domain.dto.MemberDto;
 import app.project.platform.service.ContentService;
 import jakarta.validation.Valid;

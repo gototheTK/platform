@@ -8,10 +8,12 @@ import app.project.platform.domain.dto.MemberDto;
 import app.project.platform.domain.type.ContentCategory;
 import app.project.platform.entity.Content;
 import app.project.platform.entity.ContentImage;
+import app.project.platform.entity.ContentLike;
 import app.project.platform.entity.Member;
 import app.project.platform.exception.BusinessException;
 import app.project.platform.handler.FileHandler;
 import app.project.platform.repository.ContentImageRepository;
+import app.project.platform.repository.ContentLikeRepository;
 import app.project.platform.repository.ContentRepository;
 import app.project.platform.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
@@ -35,6 +37,8 @@ public class ContentService {
     private final ContentRepository contentRepository;
 
     private final ContentImageRepository contentImageRepository;
+
+    private final ContentLikeRepository contentLikeRepository;
 
     // JPA가 영속성컨텍스트에서 스내샷을 만들어서, 변경감지를하지 않게합니다.
     // 그럼으로써 객체나 메모리 낭비를 하지 않게 합니다.
@@ -130,6 +134,47 @@ public class ContentService {
         }
 
         contentRepository.delete(content);
+
+    }
+
+    @Transactional
+    public Long addLike(
+            Long contentId,
+            MemberDto memberDto) {
+
+        // 글이 존재하는가?
+        Content content = contentRepository.findById(contentId).orElseThrow(() -> new BusinessException(ErrorCode.CONTENT_NOT_FOUND));
+
+        // 회원이 존재하는가?
+        Member member = memberRepository.findById(memberDto.getId()).orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+
+        // 좋아요 중복인가?
+        if (contentLikeRepository.existsByContentAndMember(content, member)) throw new BusinessException(ErrorCode.ALREADY_LIKED);
+
+        ContentLike contentLike = ContentLike.builder()
+                .content(content)
+                .member(member)
+                .build();
+
+        return contentLikeRepository.save(contentLike).getId();
+
+    }
+
+    @Transactional
+    public void addDislike(
+            Long contentId,
+            MemberDto memberDto) {
+
+        // 글이 존재하는가?
+        Content content = contentRepository.findById(contentId).orElseThrow(() -> new BusinessException(ErrorCode.CONTENT_NOT_FOUND));
+
+        // 회원이 존재하는가?
+        Member member = memberRepository.findById(memberDto.getId()).orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+
+        // 좋아요가 존재하는가?
+        if (!contentLikeRepository.existsByContentAndMember(content, member)) throw new BusinessException(ErrorCode.LIKE_NOT_FOUND);
+
+        contentLikeRepository.deleteByContentAndMember(content, member);
 
     }
 

@@ -35,6 +35,10 @@ public enum ErrorCode {
     CONTENT_NOT_FOUND(HttpStatus.NOT_FOUND, "P001", "해당 게시글을 찾을 수 없습니다."),
     CONTENT_WRITER_MISMATCH(HttpStatus.FORBIDDEN, "P002", "해당 게시글을 수정/삭제할 권한이 없습니다."),
     ALREADY_DELETED_CONTENT(HttpStatus.BAD_REQUEST, "P003", "이미 삭제된 게시글입니다."),
+    ALREADY_LIKED(HttpStatus.CONFLICT, "P004", "이미 좋아요를 누른 게시물입니다."),
+    LIKE_NOT_FOUND(HttpStatus.NOT_FOUND, "P005","좋아요를 누르지 않은 게시물입니다."), // 취소 실패 시
+    SELF_LIKE_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "P006","본인 게시물에는 좋아요를 누를 수 없습니다."), // (선택 사항)
+
 
     // =================================================================
     // 4. Category (카테고리 관련) - T001 ~ T099

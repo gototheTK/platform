@@ -8,12 +8,15 @@ import app.project.platform.domain.type.ContentCategory;
 import app.project.platform.domain.type.Role;
 import app.project.platform.entity.Content;
 import app.project.platform.entity.ContentImage;
+import app.project.platform.entity.ContentLike;
 import app.project.platform.entity.Member;
 import app.project.platform.exception.BusinessException;
 import app.project.platform.handler.FileHandler;
 import app.project.platform.repository.ContentImageRepository;
+import app.project.platform.repository.ContentLikeRepository;
 import app.project.platform.repository.ContentRepository;
 import app.project.platform.repository.MemberRepository;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -50,6 +53,9 @@ public class ContentServiceTest {
 
     @Mock
     ContentImageRepository contentImageRepository;
+
+    @Mock
+    ContentLikeRepository contentLikeRepository;
 
     @Mock
     FileHandler fileHandler;
@@ -178,5 +184,58 @@ public class ContentServiceTest {
                 .hasMessageContaining(ErrorCode.UNAUTHORIZED.getMessage());
 
     }
+
+    @Test
+    @DisplayName("좋아요 성공 검사")
+    void 좋아요_성공() {
+
+        // 글
+        Long contentId = 1L;
+
+        // 회원
+        MemberDto memberDto = MemberDto.builder().id(1L).build();
+
+        Content content = Content.builder().build();
+        ReflectionTestUtils.setField(content, "id", 1L);
+
+        Member member = Member.builder().build();
+        ReflectionTestUtils.setField(member, "id", 1L);
+
+        ContentLike contentLike = ContentLike.builder()
+                .content(content)
+                .member(member)
+                .build();
+
+        ReflectionTestUtils.setField(contentLike, "id", 1L);
+
+        // given
+        given(contentRepository.findById(contentId)).willReturn(Optional.of(content));
+        given(memberRepository.findById(memberDto.getId())).willReturn(Optional.of(member));
+        given(contentLikeRepository.existsByContentAndMember(content, member)).willReturn(false);
+        given(contentLikeRepository.save(any())).willReturn(contentLike);
+
+        //  when
+        Long likeId = contentService.addLike(contentId, memberDto);
+
+        //  then
+        ArgumentCaptor<ContentLike> captor = ArgumentCaptor.forClass(ContentLike.class);
+
+        then(contentRepository).should(times(1)).findById(contentId);
+        then(memberRepository).should(times(1)).findById(memberDto.getId());
+        // 여기서 any()가 아니어도 상관없나?
+        then(contentLikeRepository).should(times(1)).existsByContentAndMember(content, member);
+        then(contentLikeRepository).should(times(1)).save(captor.capture());
+
+        ContentLike capturedContentLike = captor.getValue();
+
+        // contentLike가 제대로 만들어 졌는지 확인
+        assertThat(capturedContentLike.getContent().getId()).isEqualTo(contentId);
+        assertThat(capturedContentLike.getMember().getId()).isEqualTo(memberDto.getId());
+
+        //  sava 결과 확인
+        assertThat(likeId).isEqualTo(contentLike.getId());
+
+    }
+
 
 }

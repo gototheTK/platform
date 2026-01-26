@@ -6,18 +6,16 @@ import app.project.platform.domain.dto.CommentResponseDto;
 import app.project.platform.domain.dto.MemberDto;
 import app.project.platform.entity.Comment;
 import app.project.platform.entity.Content;
-import app.project.platform.entity.ContentImage;
+import app.project.platform.entity.ContentLike;
 import app.project.platform.entity.Member;
 import app.project.platform.exception.BusinessException;
 import app.project.platform.repository.CommentRepository;
+import app.project.platform.repository.ContentLikeRepository;
 import app.project.platform.repository.ContentRepository;
 import app.project.platform.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile;
-
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor
