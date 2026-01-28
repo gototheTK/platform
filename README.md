@@ -107,6 +107,7 @@ flowchart LR
     style DB fill:#00ccff,stroke:#333,stroke-width:2px
 
 ---
+```
 
 ## API Response Format
 
