@@ -268,7 +268,7 @@ public class ContentServiceTest {
                 .build();
 
         //  then
-        verify(contentLikeRepository, times(0)).save(contentLike);
+        verify(contentLikeRepository, times(0)).save(any());
 
     }
 
