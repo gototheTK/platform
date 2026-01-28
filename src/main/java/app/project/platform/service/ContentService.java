@@ -74,7 +74,7 @@ public class ContentService {
         Content savedContent = contentRepository.save(content);
 
         // 2. 파일 저장
-        if (!files.isEmpty()) {
+        if (files != null && !files.isEmpty()) {
             for (MultipartFile file : files) {
                 // FileHandler가 실제 파일 저장 후 엔티티 리턴
                 ContentImage image = fileHandler.storeFile(file, content);

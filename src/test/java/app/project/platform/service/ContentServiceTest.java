@@ -252,15 +252,23 @@ public class ContentServiceTest {
         ReflectionTestUtils.setField(member, "id", memberDto.getId());
 
         // given
+        given(contentRepository.findById(contentId)).willReturn(Optional.of(content));
+        given(memberRepository.findById(memberDto.getId())).willReturn(Optional.of(member));
         given(contentLikeRepository.existsByContentAndMember(content, member)).willReturn(true);
 
         //  when & then
         assertThatThrownBy(() -> contentService.addLike(contentId, memberDto))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("errorCode", ErrorCode.ALREADY_LIKED);
+                .extracting( e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.ALREADY_LIKED);
+
+        ContentLike contentLike = ContentLike.builder()
+                .content(content)
+                .member(member)
+                .build();
 
         //  then
-        verify(contentLikeRepository, times(0)).existsByContentAndMember(content, member);
+        verify(contentLikeRepository, times(0)).save(contentLike);
 
     }
 
@@ -311,9 +319,11 @@ public class ContentServiceTest {
         given(contentLikeRepository.existsByContentAndMember(any(), any())).willReturn(false);
 
         //  when & then
-        assertThatThrownBy(() -> contentService.removeLike(any(), any()))
+        assertThatThrownBy(() -> contentService.removeLike(1L, MemberDto.builder().build()))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining(ErrorCode.LIKE_NOT_FOUND.getMessage());
+                //.hasFieldOrPropertyWithValue("errorCode", ErrorCode.LIKE_NOT_FOUND);
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.LIKE_NOT_FOUND);
 
         verify(contentLikeRepository, times(0)).deleteByContentAndMember(any(), any());
 
