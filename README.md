@@ -91,16 +91,17 @@ erDiagram
 DB 부하를 최소화하기 위해 **Write-Back (지연 쓰기)** 전략을 채택했습니다.
 
 ```mermaid
+```mermaid
 flowchart LR
-    User[User Client] -->|1. 좋아요 요청| Server[Spring Boot Server]
+    User[User Client] -->|"1. 좋아요 요청"| Server[Spring Boot Server]
     
     subgraph "In-Memory (Fast)"
-    Server -->|2. INCR (카운트 증가)| Redis[(Redis)]
+    Server -->|"2. INCR (카운트 증가)"| Redis[(Redis)]
     end
     
     subgraph "Disk Storage (Persist)"
-    Scheduler[Like Scheduler] -->|3. 주기적 조회 (10s)| Redis
-    Scheduler -->|4. Bulk Update (한방 쿼리)| DB[(MySQL / H2)]
+    Scheduler[Like Scheduler] -->|"3. 주기적 조회 (10s)"| Redis
+    Scheduler -->|"4. Bulk Update (한방 쿼리)"| DB[(MySQL / H2)]
     end
 
     style Redis fill:#ffcc00,stroke:#333,stroke-width:2px
