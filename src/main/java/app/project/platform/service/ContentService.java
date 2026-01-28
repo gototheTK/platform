@@ -143,7 +143,7 @@ public class ContentService {
             MemberDto memberDto) {
 
         // 글이 존재하는가?
-        Content content = contentRepository.findById(contentId).orElseThrow(() -> new BusinessException(ErrorCode.CONTENT_NOT_FOUND));
+        Content content = contentRepository.findByIdWithLock(contentId).orElseThrow(() -> new BusinessException(ErrorCode.CONTENT_NOT_FOUND));
 
         // 회원이 존재하는가?
         Member member = memberRepository.findById(memberDto.getId()).orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
@@ -170,7 +170,7 @@ public class ContentService {
             MemberDto memberDto) {
 
         // 글이 존재하는가?
-        Content content = contentRepository.findById(contentId).orElseThrow(() -> new BusinessException(ErrorCode.CONTENT_NOT_FOUND));
+        Content content = contentRepository.findByIdWithLock(contentId).orElseThrow(() -> new BusinessException(ErrorCode.CONTENT_NOT_FOUND));
 
         // 회원이 존재하는가?
         Member member = memberRepository.findById(memberDto.getId()).orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));

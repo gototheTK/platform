@@ -78,7 +78,7 @@ public class ContentController {
         return ResponseEntity.ok(ApiResponse.success(null));
     }
 
-    @PostMapping("/like/{id}")
+    @PostMapping("{id}/like")
     public ResponseEntity<ApiResponse<Long>> addLike(
             @PathVariable(name = "id") Long id,
             @SessionAttribute(name = "LOGIN_MEMBER") MemberDto memberDto) {
@@ -88,7 +88,7 @@ public class ContentController {
         return ResponseEntity.ok(ApiResponse.success(contentLikeId));
     }
 
-    @DeleteMapping("/like/{id}")
+    @DeleteMapping("{id}/like")
     public ResponseEntity<ApiResponse<Void>> removeLike(
             @PathVariable(name = "id") Long id,
             @SessionAttribute(name = "LOGIN_MEMBER") MemberDto memberDto) {
