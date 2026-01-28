@@ -2,8 +2,8 @@ package app.project.platform.service;
 
 import app.project.platform.domain.code.ErrorCode;
 import app.project.platform.domain.dto.ContentCreateRequestDto;
-import app.project.platform.domain.dto.ContentUpdateRequestDto;
 import app.project.platform.domain.dto.ContentResponseDto;
+import app.project.platform.domain.dto.ContentUpdateRequestDto;
 import app.project.platform.domain.dto.MemberDto;
 import app.project.platform.domain.type.ContentCategory;
 import app.project.platform.entity.Content;
@@ -156,12 +156,16 @@ public class ContentService {
                 .member(member)
                 .build();
 
-        return contentLikeRepository.save(contentLike).getId();
+        Long contentLikeId= contentLikeRepository.save(contentLike).getId();
+
+        content.increaseLikeCount();
+
+        return contentLikeId;
 
     }
 
     @Transactional
-    public void addDislike(
+    public void removeLike(
             Long contentId,
             MemberDto memberDto) {
 
@@ -175,6 +179,8 @@ public class ContentService {
         if (!contentLikeRepository.existsByContentAndMember(content, member)) throw new BusinessException(ErrorCode.LIKE_NOT_FOUND);
 
         contentLikeRepository.deleteByContentAndMember(content, member);
+
+        content.decreaseLikeCount();
 
     }
 

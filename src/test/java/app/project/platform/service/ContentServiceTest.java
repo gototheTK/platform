@@ -31,12 +31,12 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-import static org.mockito.BDDMockito.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.*;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
-import static org.assertj.core.api.Assertions.*;
 
 
 @ExtendWith(MockitoExtension.class)
@@ -234,6 +234,88 @@ public class ContentServiceTest {
 
         //  sava 결과 확인
         assertThat(likeId).isEqualTo(contentLike.getId());
+
+    }
+
+    @Test
+    @DisplayName("좋아요_실패_중복")
+    void 좋아요_실패_중복 () {
+
+        Long contentId = 1L;
+
+        MemberDto memberDto = MemberDto.builder().id(1L).build();
+
+        Content content = Content.builder().build();
+        ReflectionTestUtils.setField(content, "id", contentId);
+
+        Member member = Member.builder().build();
+        ReflectionTestUtils.setField(member, "id", memberDto.getId());
+
+        // given
+        given(contentLikeRepository.existsByContentAndMember(content, member)).willReturn(true);
+
+        //  when & then
+        assertThatThrownBy(() -> contentService.addLike(contentId, memberDto))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("errorCode", ErrorCode.ALREADY_LIKED);
+
+        //  then
+        verify(contentLikeRepository, times(0)).existsByContentAndMember(content, member);
+
+    }
+
+    @Test
+    @DisplayName("좋아요_취소_성공")
+    void 좋아요_취소_성공 () {
+
+        Long contentId= 1L;
+
+        MemberDto memberDto = MemberDto.builder().id(1L).build();
+
+        Content content = Content.builder().build();
+        ReflectionTestUtils.setField(content, "id", 1L);
+
+        Member member = Member.builder().build();
+        ReflectionTestUtils.setField(member, "id", 1L);
+
+        ContentLike contentLike = ContentLike.builder()
+                .content(content)
+                .member(member)
+                .build();
+
+        ReflectionTestUtils.setField(contentLike, "id", 1L);
+
+        // given
+        given(contentRepository.findById(contentId)).willReturn(Optional.of(content));
+        given(memberRepository.findById(memberDto.getId())).willReturn(Optional.of(member));
+        given(contentLikeRepository.existsByContentAndMember(content, member)).willReturn(true);
+
+        //  when
+        contentService.removeLike(contentId, memberDto);
+
+        //  then
+        verify(contentLikeRepository, times(1)).deleteByContentAndMember(content, member);
+
+    }
+
+    @Test
+    @DisplayName("좋아요_취소_실패_미존재")
+    void 좋아요_취소_실패_미존재 () {
+        // 1. 테스트를 위한 더미 객체 준비
+        Content content = Content.builder().build();
+        Member member = Member.builder().build();
+
+        //  given
+        given(contentRepository.findById(any())).willReturn(Optional.of(content));
+        given(memberRepository.findById(any())).willReturn(Optional.of(member));
+        given(contentLikeRepository.existsByContentAndMember(any(), any())).willReturn(false);
+
+        //  when & then
+        assertThatThrownBy(() -> contentService.removeLike(any(), any()))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining(ErrorCode.LIKE_NOT_FOUND.getMessage());
+
+        verify(contentLikeRepository, times(0)).deleteByContentAndMember(any(), any());
 
     }
 

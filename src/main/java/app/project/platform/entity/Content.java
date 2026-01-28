@@ -40,6 +40,22 @@ public class Content extends BaseTimeEntity {
     @OneToMany(fetch = FetchType.LAZY, cascade = CascadeType.REMOVE, orphanRemoval = true)
     private List<ContentImage> files = new ArrayList<>();
 
+    // 좋아요 개수를 저장할 실제 컬럼 (기본값 0)
+    @Column(nullable = false)
+    private Long likeCount = 0L;
+
+    //  [비즈니스 메서드] 좋아요 증가
+    public   void increaseLikeCount() {
+        this.likeCount++;
+    }
+
+    // [비즈니스 메서드] 좋아요 감소
+    public void decreaseLikeCount() {
+        if (this.likeCount > 0) {
+            this.likeCount--;
+        }
+    }
+
     @Builder
     public Content (String title, String description, Member author, ContentCategory category) {
         this.title = title;

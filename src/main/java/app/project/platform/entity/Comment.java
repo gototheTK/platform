@@ -6,6 +6,7 @@ import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.springframework.data.jpa.repository.Query;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -34,7 +35,7 @@ public class Comment extends BaseTimeEntity {
     @JoinColumn(name = "parent_id")
     private Comment parent;
 
-    // mappedBy : 부모 객체의 매핑 멤버
+    // mappedBy : 부모 객체의 매핑 멤버C
     // cascade : Entity로 DB반영시 부모와 자식의 영향 관계
     // orphanRemoval : 자식을 모아놓은 객체에서 요소를 삭제하면 DB에 영향을 주는지 안주는지 정할 때 사용
     @OneToMany(fetch = FetchType.LAZY, mappedBy = "parent", cascade = CascadeType.ALL, orphanRemoval = true)

@@ -1,11 +1,13 @@
 package app.project.platform.controller;
 
+import app.project.platform.domain.code.ErrorCode;
 import app.project.platform.domain.dto.ContentCreateRequestDto;
 import app.project.platform.domain.dto.ContentResponseDto;
 import app.project.platform.domain.dto.ContentUpdateRequestDto;
 import app.project.platform.domain.dto.MemberDto;
 import app.project.platform.domain.type.ContentCategory;
 import app.project.platform.domain.type.Role;
+import app.project.platform.exception.BusinessException;
 import app.project.platform.service.ContentService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -19,9 +21,9 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.nio.charset.StandardCharsets;
 
-import static org.mockito.BDDMockito.any;
-import static org.mockito.BDDMockito.given;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.mockito.BDDMockito.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -212,4 +214,70 @@ public class ContentControllerTest {
 
     }
 
+    @Test
+    void 좋아요_성공 () throws  Exception {
+
+        Long contentId = 1L;
+
+        MemberDto memberDto = MemberDto.builder().id(1L).build();
+
+        Long contentLikeId = 1L;
+
+        given(contentService.addLike(contentId, memberDto)).willReturn(contentLikeId);
+
+        mockMvc.perform(post("/api/v1/content/like/{id}", contentId)
+                .sessionAttr("LOGIN_MEMBER", memberDto))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("success"))
+            .andExpect(jsonPath("$.data").value(contentLikeId));
+
+    }
+
+    @Test
+    void 좋아요_실패_중복 () throws Exception {
+
+        Long contentId = 1L;
+
+        MemberDto memberDto = MemberDto.builder().id(1L).build();
+
+        given(contentService.addLike(contentId, memberDto)).willThrow(new BusinessException(ErrorCode.ALREADY_LIKED));
+
+        mockMvc.perform(post("/api/v1/content/like/{id}", contentId)
+                .sessionAttr("LOGIN_MEMBER", memberDto))
+            .andExpect(status().isConflict())
+            .andExpect(jsonPath("$.status").value("fail"))
+            .andExpect(jsonPath("$.message").value(ErrorCode.ALREADY_LIKED.getMessage()));
+
+    }
+
+    @Test
+    void 좋아요_취소_성공 () throws Exception {
+
+        Long contentId = 1L;
+
+        MemberDto memberDto = MemberDto.builder().id(1L).build();
+
+        mockMvc.perform(delete("/api/v1/content/like/{id}", contentId)
+                .sessionAttr("LOGIN_MEMBER", memberDto))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("success"));
+
+    }
+
+    @Test
+    void 좋아요_취소_실패_미존재 () throws Exception {
+
+        Long contentId = 1L;
+
+        MemberDto memberDto = MemberDto.builder().id(1L).build();
+
+        willThrow(new BusinessException(ErrorCode.LIKE_NOT_FOUND))
+            .given(contentService).removeLike(contentId, memberDto);
+
+        mockMvc.perform(delete("/api/v1/content/like/{id}", contentId)
+                .sessionAttr("LOGIN_MEMBER", memberDto))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.message").value(ErrorCode.LIKE_NOT_FOUND.getMessage()));
+
+    }
 }

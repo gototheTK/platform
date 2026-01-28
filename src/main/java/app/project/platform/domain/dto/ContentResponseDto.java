@@ -29,6 +29,8 @@ public class ContentResponseDto {
 
     private List<CommentResponseDto> comments;
 
+    private Long likeCount;
+
     public static ContentResponseDto of (Content content) {
         return ContentResponseDto.builder()
                 .id(content.getId())
@@ -43,6 +45,7 @@ public class ContentResponseDto {
                         .map(CommentResponseDto::from)
                         .toList()
                 )
+                .likeCount(content.getLikeCount())
                 .build();
     }
 
