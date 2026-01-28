@@ -19,6 +19,7 @@ import app.project.platform.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -39,6 +40,8 @@ public class ContentService {
     private final ContentImageRepository contentImageRepository;
 
     private final ContentLikeRepository contentLikeRepository;
+
+    private final RedisTemplate<String, Object> redisTemplate;
 
     // JPA가 영속성컨텍스트에서 스내샷을 만들어서, 변경감지를하지 않게합니다.
     // 그럼으로써 객체나 메모리 낭비를 하지 않게 합니다.
@@ -143,7 +146,8 @@ public class ContentService {
             MemberDto memberDto) {
 
         // 글이 존재하는가?
-        Content content = contentRepository.findByIdWithLock(contentId).orElseThrow(() -> new BusinessException(ErrorCode.CONTENT_NOT_FOUND));
+        //Content content = contentRepository.findByIdWithLock(contentId).orElseThrow(() -> new BusinessException(ErrorCode.CONTENT_NOT_FOUND));
+        Content content = contentRepository.findById(contentId).orElseThrow(() -> new BusinessException(ErrorCode.CONTENT_NOT_FOUND));
 
         // 회원이 존재하는가?
         Member member = memberRepository.findById(memberDto.getId()).orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
@@ -155,12 +159,16 @@ public class ContentService {
                 .content(content)
                 .member(member)
                 .build();
+        contentLikeRepository.save(contentLike);
 
-        Long contentLikeId= contentLikeRepository.save(contentLike).getId();
+        //        content.decreaseLikeCount();
 
-        content.increaseLikeCount();
+        //  DB 카운트 증가(X) -> Redis에 카운트 + 1 (O)
+        //  Key 패턴 : "like:count:{게시글ID}"
+        String key = "like:count:" + contentId;
+        redisTemplate.opsForValue().increment(key);
 
-        return contentLikeId;
+        return contentLike.getId();
 
     }
 
@@ -170,7 +178,7 @@ public class ContentService {
             MemberDto memberDto) {
 
         // 글이 존재하는가?
-        Content content = contentRepository.findByIdWithLock(contentId).orElseThrow(() -> new BusinessException(ErrorCode.CONTENT_NOT_FOUND));
+        Content content = contentRepository.findById(contentId).orElseThrow(() -> new BusinessException(ErrorCode.CONTENT_NOT_FOUND));
 
         // 회원이 존재하는가?
         Member member = memberRepository.findById(memberDto.getId()).orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
@@ -180,7 +188,12 @@ public class ContentService {
 
         contentLikeRepository.deleteByContentAndMember(content, member);
 
-        content.decreaseLikeCount();
+        //        content.decreaseLikeCount();
+
+        //  DB 카운트 감소(X) -> Redis에 카운트 - 1 (O)
+        //  Key 패턴: like:count:{게시글ID}
+        String key = "like:count:" + contentId;
+        redisTemplate.opsForValue().decrement(key);
 
     }
 

@@ -4,11 +4,6 @@ import app.project.platform.domain.code.ErrorCode;
 import app.project.platform.domain.dto.CommentRequestDto;
 import app.project.platform.domain.dto.CommentResponseDto;
 import app.project.platform.domain.dto.MemberDto;
-import app.project.platform.domain.type.ContentCategory;
-import app.project.platform.domain.type.Role;
-import app.project.platform.entity.Comment;
-import app.project.platform.entity.Content;
-import app.project.platform.entity.Member;
 import app.project.platform.exception.BusinessException;
 import app.project.platform.service.CommentService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -19,7 +14,6 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.mockito.ArgumentMatchers.any;
