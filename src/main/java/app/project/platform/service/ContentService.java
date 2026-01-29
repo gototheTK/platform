@@ -145,31 +145,36 @@ public class ContentService {
             Long contentId,
             MemberDto memberDto) {
 
-        // 글이 존재하는가?
-        //Content content = contentRepository.findByIdWithLock(contentId).orElseThrow(() -> new BusinessException(ErrorCode.CONTENT_NOT_FOUND));
+        // 글과 회원이 존재하는가?
         Content content = contentRepository.findById(contentId).orElseThrow(() -> new BusinessException(ErrorCode.CONTENT_NOT_FOUND));
-
-        // 회원이 존재하는가?
         Member member = memberRepository.findById(memberDto.getId()).orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
 
-        // 좋아요 중복인가?
-        if (contentLikeRepository.existsByContentAndMember(content, member)) throw new BusinessException(ErrorCode.ALREADY_LIKED);
+        // Redis Set 사용!
+        String userLikeKey = "like:users:" + contentId;
 
+        //  Redis Set에 유저 ID 추가 시도
+        //  add() 결과 값: 1 = 새로 추가됨(성공), 0 = 이미 있음(중복)
+        Long isAdded = redisTemplate.opsForSet().add(userLikeKey, member.getId());
+
+        if (isAdded != null && isAdded == 0) {
+            //  이미 Set에 들어있다면 중복 클릭임 -> 예외 던짐
+            throw new BusinessException(ErrorCode.ALREADY_LIKED);
+        }
+
+        //  3. DB 저장 (영속성 유지를 위해 DB에도 저장은 함)
+        //  (단, 위에서 Redis로 중복을 막았으니 DB 조회 쿼리 없이 바로 save만 하면됨)
+        //  *주의: 혹시 Redis 데이터가 날아갔을 경우를 대비해 try-catch로 DB 중복 에러를 잡는 방어 코드를 넣기도 함.
         ContentLike contentLike = ContentLike.builder()
                 .content(content)
                 .member(member)
                 .build();
         contentLikeRepository.save(contentLike);
 
-        //        content.decreaseLikeCount();
-
-        //  DB 카운트 증가(X) -> Redis에 카운트 + 1 (O)
-        //  Key 패턴 : "like:count:{게시글ID}"
-        String key = "like:count:" + contentId;
-        redisTemplate.opsForValue().increment(key);
+        //  4. Redis 카운트 증가 (기본 로직 유지)
+        String countKey = "like:count:" + contentId;
+        redisTemplate.opsForValue().increment(countKey);
 
         return contentLike.getId();
-
     }
 
     @Transactional
@@ -177,24 +182,26 @@ public class ContentService {
             Long contentId,
             MemberDto memberDto) {
 
-        // 글이 존재하는가?
+        // 글과 회원이 존재하는가?
         Content content = contentRepository.findById(contentId).orElseThrow(() -> new BusinessException(ErrorCode.CONTENT_NOT_FOUND));
-
-        // 회원이 존재하는가?
         Member member = memberRepository.findById(memberDto.getId()).orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
 
-        // 좋아요가 존재하는가?
-        if (!contentLikeRepository.existsByContentAndMember(content, member)) throw new BusinessException(ErrorCode.LIKE_NOT_FOUND);
+        // Redis Set에서 유저 삭제
+        String userLikeKey = "like:users:" + contentId;
 
+        //  remove() 결과값: 1 = 삭제됨, 0 = 원래 없었음
+        Long isRemoved = redisTemplate.opsForSet().remove(userLikeKey, member.getId());
+
+        if (isRemoved != null && isRemoved == 0) {
+            throw new BusinessException(ErrorCode.LIKE_NOT_FOUND);
+        }
+        
+        //  DB 삭제
         contentLikeRepository.deleteByContentAndMember(content, member);
-
-        //        content.decreaseLikeCount();
-
-        //  DB 카운트 감소(X) -> Redis에 카운트 - 1 (O)
-        //  Key 패턴: like:count:{게시글ID}
-        String key = "like:count:" + contentId;
-        redisTemplate.opsForValue().decrement(key);
-
+        
+        //  Redis 카운트 감소
+        String countKey = "like:count:" + contentId;
+        redisTemplate.opsForValue().decrement(countKey);
     }
 
 }
