@@ -7,11 +7,12 @@ import app.project.platform.domain.dto.MemberDto;
 import app.project.platform.domain.type.ContentCategory;
 import app.project.platform.domain.type.Role;
 import app.project.platform.entity.Comment;
+import app.project.platform.entity.CommentLike;
 import app.project.platform.entity.Content;
 import app.project.platform.entity.Member;
 import app.project.platform.exception.BusinessException;
+import app.project.platform.repository.CommentLikeRepository;
 import app.project.platform.repository.CommentRepository;
-import app.project.platform.repository.ContentLikeRepository;
 import app.project.platform.repository.ContentRepository;
 import app.project.platform.repository.MemberRepository;
 import org.assertj.core.api.ThrowableAssert;
@@ -23,15 +24,17 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
-import static org.assertj.core.api.Assertions.*;
 
 @ExtendWith(MockitoExtension.class)
 public class CommentServiceTest {
@@ -47,6 +50,12 @@ public class CommentServiceTest {
 
     @Mock
     CommentRepository commentRepository;
+
+    @Mock
+    CommentLikeRepository commentLikeRepository;
+
+    @Mock
+    RedisTemplate<String, Object> redisTemplate;
 
     @BeforeEach
     void setUp () {}
@@ -249,6 +258,46 @@ public class CommentServiceTest {
         assertThatThrownBy(action)
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining(ErrorCode.COMMENT_WRITER_MISMATCH.getMessage());
+    }
+
+    @Test
+    @DisplayName("댓글 좋아요 성공")
+    void 댓글_좋아요_성공 () {
+
+        Long commentId = 1L;
+        MemberDto memberDto = MemberDto.builder()
+                .id(1L)
+                .email("test@email.com")
+                .nickname("test")
+                .role(Role.USER.getName())
+                .build();
+
+        Comment comment = Comment.builder().build();
+        ReflectionTestUtils.setField(comment, "id", 1L);
+
+        Member member = Member.builder().build();
+        ReflectionTestUtils.setField(member, "id", memberDto.getId());
+
+        CommentLike commentLike = CommentLike.builder().build();
+        ReflectionTestUtils.setField(commentLike, "id", 1L);
+
+        // given
+        given(commentRepository.findById(commentId)).willReturn(Optional.of(comment));
+        given(memberRepository.findById(memberDto.getId())).willReturn(Optional.of(member));
+        given(redisTemplate.opsForSet().getOperations().opsForSet().add(any(), any())).willReturn(1L);
+        given(commentLikeRepository.save(commentLike)).willReturn(commentLike);
+
+        // when
+        Long commentLikeId = commentService.addLike(commentId, memberDto);
+
+        assertThat(commentLikeId).isEqualTo(commentLike.getId());
+
+        verify(commentRepository, times(1)).findById(commentId);
+        verify(memberRepository, times(1)).findById(memberDto.getId());
+        verify(redisTemplate, times(1)).opsForSet().add(any(), member.getId());
+        verify(commentLikeRepository, times(1)).save(commentLike);
+        verify(redisTemplate, times(1)).opsForValue().decrement(any());
+
     }
 
 }

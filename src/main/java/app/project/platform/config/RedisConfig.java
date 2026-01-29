@@ -10,22 +10,21 @@ import org.springframework.data.redis.serializer.StringRedisSerializer;
 @Configuration
 public class RedisConfig {
 
-    /**
-     * RedisTemplate: Redis와 간편하게 통신하기 위한 도구
-     * - Key는 String으로, Value는 JSON으로 직렬화해서 저장하도록 설정합니다.
-     */
     @Bean
-    public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory connectionFactory) {
-        RedisTemplate<String, Object> template = new RedisTemplate<>();
-        template.setConnectionFactory(connectionFactory);
+    RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory redisConnectionFactory) {
 
-        // Key 직렬화: String (우리가 아는 글자로 저장됨)
-        template.setKeySerializer(new StringRedisSerializer());
+        RedisTemplate<String, Object> redisTemplate = new RedisTemplate<>();
 
-        //  Value 직렬화: JSON (객체를 JSON 형태로 저장해서 눈으로 보기 편함)
-        template.setValueSerializer(new GenericJackson2JsonRedisSerializer());
+        redisTemplate.setConnectionFactory(redisConnectionFactory);
 
-        return template;
+        // String
+        redisTemplate.setKeySerializer(new StringRedisSerializer());
+
+        // JSON
+        redisTemplate.setValueSerializer(new GenericJackson2JsonRedisSerializer());
+
+        return redisTemplate;
+
     }
 
 }

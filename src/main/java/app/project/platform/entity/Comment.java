@@ -41,6 +41,20 @@ public class Comment extends BaseTimeEntity {
     @OneToMany(fetch = FetchType.LAZY, mappedBy = "parent", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Comment> children = new ArrayList<>();
 
+    // 좋아요 개수를 저장할 새로운 컬럼
+    @Column(nullable = false)
+    private Long likeCount = 0L;
+
+    // 좋아요 증가
+    public void increaseLikeCount() {
+        this.likeCount++;
+    }
+
+    // 좋아요 감소
+    public void decreaseLikeCount(){
+        this.likeCount--;
+    }
+
     @Builder
     public Comment(Member author, Content content, String text, Comment parent) {
         this.author = author;

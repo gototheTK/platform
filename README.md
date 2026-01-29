@@ -91,22 +91,27 @@ erDiagram
 DB 부하를 최소화하기 위해 **Write-Back (지연 쓰기)** 전략을 채택했습니다.
 
 ```mermaid
-```mermaid
 flowchart LR
     User[User Client] -->|"1. 좋아요 요청"| Server[Spring Boot Server]
     
-    subgraph "In-Memory (Fast)"
-    Server -->|"2. INCR (카운트 증가)"| Redis[(Redis)]
+    subgraph "Redis (In-Memory)"
+    Server -->|"2. 중복 체크 (Set)"| RedisSet[("Set: like:content:users:{id}")]
+    Server -->|"3. 카운트 증가 (String)"| RedisCount[("String: like:content:count:{id}")]
     end
     
-    subgraph "Disk Storage (Persist)"
-    Scheduler[Like Scheduler] -->|"3. 주기적 조회 (10s)"| Redis
-    Scheduler -->|"4. Bulk Update (한방 쿼리)"| DB[(MySQL / H2)]
+    subgraph "DB (Disk)"
+    Scheduler[Like Scheduler] -->|"4. 주기적 조회 (10s)"| RedisCount
+    Scheduler -->|"5. Bulk Update"| DB[(MySQL / H2)]
     end
 
-    style Redis fill:#ffcc00,stroke:#333,stroke-width:2px
+    style RedisSet fill:#ffcc00,stroke:#333,stroke-width:2px
+    style RedisCount fill:#ffcc00,stroke:#333,stroke-width:2px
     style DB fill:#00ccff,stroke:#333,stroke-width:2px
 ```
+
+1. Zero DB Query: '좋아요'요청 시 DB를 전혀 조회하지 않습니다.(기존 existsBy...)제거
+2. Redis Set: 메모리 자료구조를 사용하여 O(1) 속도로 중복 클릭을 방지합니다.
+3. Write-Back: 카운트 정보를 메모리에 모았다가, 스케줄러가 10초마다 DB에 일괄 반영합니다.
 
 ---
 
@@ -189,7 +194,7 @@ flowchart LR
     - Mistake : any()와 new ArrayList<>()를 섞어 써서 Mockito Stubbing 에러 발생 -> any()로 통일하거나 eq() 사용해야함.
 
 ### 2026-01-28
-    오늘의 문제와 해결
+    오늘의 학습 및 문제 해결
 
     1. 동시성 이슈: 좋아요 데이터 증발 (Lost Update)
         - 문제 상황: JMeter로 100명이 동시에 좋아요를 눌렀을 때, DB에 약 50개만 저장되는 갱신 분실(Race Condition) 현상 발생
@@ -211,4 +216,12 @@ flowchart LR
         - 결과:
                 - 데이터 유실률 0% 달성
                 - Redis키에 누적되고, 스케줄러 실행 후 DB로 이관되는걸 확인
+
+### 2026-01-29
+    오늘의 학습 및 문제 해결
+
+    1. 조회 성능 개선 (NoSQL Caching): 중복 좋아요 체크 로직을 DB 조회(existsBy)에서 Redis Set 연산으로 대체하여 병목 저게.
+    2. 확장성 설계 (Key Naming): 게시글(Content)와 댓글(Comment)의 키 충돌 방지를 위한 네임스페이스 설계 적용.
+
+
     

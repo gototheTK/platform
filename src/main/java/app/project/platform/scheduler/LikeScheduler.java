@@ -25,8 +25,10 @@ public class LikeScheduler {
     @Transactional
     public void syncLikeCount() {
 
+        String LIKE_CONTENT_USERS = "like:content:users:";
+
         // 1. Redis에서 "like:count:*" 패턴을 가진 모든 키를 찾습니다.
-        Set<String> keys = redisTemplate.keys("like:count:*");
+        Set<String> keys = redisTemplate.keys(LIKE_CONTENT_USERS + "*");
 
         if (keys == null || keys.isEmpty()) {
             return;
@@ -34,7 +36,7 @@ public class LikeScheduler {
 
         for (String key : keys) {
             //  2. 게시글 ID 추출 ("like:count:1" -> "1")
-            Long contentId = Long.parseLong(key.split(":")[2]);
+            Long contentId = Long.parseLong(key.split(":")[3]);
 
             //  3. Redis에서 숫자를 가져오면 '0'으로 리셋합니다. (Atomic 연산: getAndSet)
             //  가져온 숫자만큼 DB에 더해줄 겁니다.

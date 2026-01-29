@@ -145,12 +145,15 @@ public class ContentService {
             Long contentId,
             MemberDto memberDto) {
 
+        String LIKE_CONTENT_USERS = "like:content:users:";
+        String LIKE_COUNT_USERS = "like:count:users";
+
         // 글과 회원이 존재하는가?
         Content content = contentRepository.findById(contentId).orElseThrow(() -> new BusinessException(ErrorCode.CONTENT_NOT_FOUND));
         Member member = memberRepository.findById(memberDto.getId()).orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
 
         // Redis Set 사용!
-        String userLikeKey = "like:users:" + contentId;
+        String userLikeKey = LIKE_CONTENT_USERS + member.getId();
 
         //  Redis Set에 유저 ID 추가 시도
         //  add() 결과 값: 1 = 새로 추가됨(성공), 0 = 이미 있음(중복)
@@ -171,7 +174,7 @@ public class ContentService {
         contentLikeRepository.save(contentLike);
 
         //  4. Redis 카운트 증가 (기본 로직 유지)
-        String countKey = "like:count:" + contentId;
+        String countKey = LIKE_COUNT_USERS + contentId;
         redisTemplate.opsForValue().increment(countKey);
 
         return contentLike.getId();
@@ -182,17 +185,22 @@ public class ContentService {
             Long contentId,
             MemberDto memberDto) {
 
+        // Redis 패턴
+        String LIKE_CONTENT_USERS = "like:content:users:";
+        String LIKE_CONTENT_COUNT = "like:content:count:";
+
         // 글과 회원이 존재하는가?
         Content content = contentRepository.findById(contentId).orElseThrow(() -> new BusinessException(ErrorCode.CONTENT_NOT_FOUND));
         Member member = memberRepository.findById(memberDto.getId()).orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
 
         // Redis Set에서 유저 삭제
-        String userLikeKey = "like:users:" + contentId;
+        String userLikeKey = LIKE_CONTENT_USERS + contentId;
 
         //  remove() 결과값: 1 = 삭제됨, 0 = 원래 없었음
         Long isRemoved = redisTemplate.opsForSet().remove(userLikeKey, member.getId());
 
         if (isRemoved != null && isRemoved == 0) {
+            //  이미 Set에 들어있다면 중복 클릭임 -> 예외 던짐
             throw new BusinessException(ErrorCode.LIKE_NOT_FOUND);
         }
         
@@ -200,7 +208,7 @@ public class ContentService {
         contentLikeRepository.deleteByContentAndMember(content, member);
         
         //  Redis 카운트 감소
-        String countKey = "like:count:" + contentId;
+        String countKey = LIKE_CONTENT_COUNT + contentId;
         redisTemplate.opsForValue().decrement(countKey);
     }
 
