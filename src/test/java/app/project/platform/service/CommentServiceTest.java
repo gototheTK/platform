@@ -309,10 +309,11 @@ public class CommentServiceTest {
 
         verify(commentRepository, times(1)).findById(commentId);
         verify(memberRepository, times(1)).findById(memberDto.getId());
-        verify(setOperations, times(1)).add(any(), eq(member.getId()));
+        String expectedUserKey = "like:comment:users:"+commentId;
+        verify(setOperations, times(1)).add(eq(expectedUserKey), eq(member.getId()));
         verify(commentLikeRepository, times(1)).save(captor.capture());
-        String expectedKey = "like:comment:count:";
-        verify(valueOperations, times(1)).increment(eq(expectedKey+commentId));
+        String expectedCountKey = "like:comment:count:"+commentId;
+        verify(valueOperations, times(1)).increment(eq(expectedCountKey));
 
         CommentLike capturedCommentLike = captor.getValue();
 
