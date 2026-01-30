@@ -6,10 +6,7 @@ import app.project.platform.domain.dto.CommentResponseDto;
 import app.project.platform.domain.dto.MemberDto;
 import app.project.platform.domain.type.ContentCategory;
 import app.project.platform.domain.type.Role;
-import app.project.platform.entity.Comment;
-import app.project.platform.entity.CommentLike;
-import app.project.platform.entity.Content;
-import app.project.platform.entity.Member;
+import app.project.platform.entity.*;
 import app.project.platform.exception.BusinessException;
 import app.project.platform.repository.CommentLikeRepository;
 import app.project.platform.repository.CommentRepository;
@@ -19,19 +16,22 @@ import org.assertj.core.api.ThrowableAssert;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestTemplate;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.SetOperations;
+import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.Optional;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -56,6 +56,12 @@ public class CommentServiceTest {
 
     @Mock
     RedisTemplate<String, Object> redisTemplate;
+
+    @Mock
+    SetOperations<String, Object> setOperations;
+
+    @Mock
+    ValueOperations<String, Object> valueOperations;
 
     @BeforeEach
     void setUp () {}
@@ -284,19 +290,150 @@ public class CommentServiceTest {
         // given
         given(commentRepository.findById(commentId)).willReturn(Optional.of(comment));
         given(memberRepository.findById(memberDto.getId())).willReturn(Optional.of(member));
-        given(redisTemplate.opsForSet().getOperations().opsForSet().add(any(), any())).willReturn(1L);
-        given(commentLikeRepository.save(commentLike)).willReturn(commentLike);
+        given(redisTemplate.opsForSet()).willReturn(setOperations);
+        given(setOperations.add(any(), any())).willReturn(1L);
+        given(redisTemplate.opsForValue()).willReturn(valueOperations);
+        given(commentLikeRepository.save(any())).willAnswer(invocationOnMock -> {
+            CommentLike arg = invocationOnMock.getArgument(0);
+            ReflectionTestUtils.setField(arg, "id", 1L);
+            return arg;
+        });
 
         // when
         Long commentLikeId = commentService.addLike(commentId, memberDto);
 
+        // then
         assertThat(commentLikeId).isEqualTo(commentLike.getId());
+
+        ArgumentCaptor<CommentLike> captor = ArgumentCaptor.forClass(CommentLike.class);
 
         verify(commentRepository, times(1)).findById(commentId);
         verify(memberRepository, times(1)).findById(memberDto.getId());
-        verify(redisTemplate, times(1)).opsForSet().add(any(), member.getId());
-        verify(commentLikeRepository, times(1)).save(commentLike);
-        verify(redisTemplate, times(1)).opsForValue().decrement(any());
+        verify(setOperations, times(1)).add(any(), eq(member.getId()));
+        verify(commentLikeRepository, times(1)).save(captor.capture());
+        String expectedKey = "like:comment:count:";
+        verify(valueOperations, times(1)).increment(eq(expectedKey+commentId));
+
+        CommentLike capturedCommentLike = captor.getValue();
+
+        assertThat(capturedCommentLike.getComment()).isEqualTo(comment);
+        assertThat(capturedCommentLike.getMember()).isEqualTo(member);
+
+    }
+
+    @Test
+    @DisplayName("댓글 좋아요 실패 중복")
+    void 댓글_좋아요_실패_중복 () {
+
+        Long commentId = 1L;
+        MemberDto memberDto = MemberDto.builder().id(1L).build();
+
+        //  댓글과 회원 조회
+        Comment comment = Comment.builder().build();
+        ReflectionTestUtils.setField(comment, "id", commentId);
+
+        Member member = Member.builder().build();
+        ReflectionTestUtils.setField(member, "id", memberDto.getId());
+
+        //  given
+        given(commentRepository.findById(commentId)).willReturn(Optional.of(comment));
+        given(memberRepository.findById(memberDto.getId())).willReturn(Optional.of(member));
+
+        given(redisTemplate.opsForSet()).willReturn(setOperations);
+        given(setOperations.add(any(), any())).willReturn(0L);
+
+        //  when & then
+        assertThatThrownBy(() -> commentService.addLike(commentId, memberDto))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.ALREADY_LIKED);
+
+        verify(commentLikeRepository, times(0)).save(any());
+        verify(valueOperations, times(0)).increment(any());
+
+    }
+
+    @Test
+    @DisplayName("댓글 좋아요 취소 성공")
+    void 댓글_좋아요_취소_성공 () {
+
+        //  입력 인자
+        Long commentId = 1L;
+        MemberDto memberDto = MemberDto.builder().id(1L).build();
+
+        //  댓글과 회원 조회
+        Comment comment = Comment.builder().build();
+        ReflectionTestUtils.setField(comment, "id", commentId);
+
+        Member member = Member.builder().build();
+        ReflectionTestUtils.setField(member, "id", memberDto.getId());
+
+        //  given
+        // JPA 메서드
+        given(commentRepository.findById(commentId)).willReturn(Optional.of(comment));
+        given(memberRepository.findById(memberDto.getId())).willReturn(Optional.of(member));
+
+        // Redis 메서드
+        given(redisTemplate.opsForSet()).willReturn(setOperations);
+        given(setOperations.remove(any(), any())).willReturn(1L);
+        given(redisTemplate.opsForValue()).willReturn(valueOperations);
+
+        //  when
+        commentService.removeLike(commentId, memberDto);
+
+        ArgumentCaptor<Comment> captorComment = ArgumentCaptor.forClass(Comment.class);
+        ArgumentCaptor<Member> captorMember = ArgumentCaptor.forClass(Member.class);
+
+        //  then
+        verify(commentRepository, times(1)).findById(commentId);
+        verify(memberRepository, times(1)).findById(memberDto.getId());
+        verify(commentLikeRepository, times(1)).deleteByCommentAndMember(captorComment.capture(), captorMember.capture());
+        verify(setOperations, times(1)).remove(any(), any());
+        verify(valueOperations, times(1)).decrement(any());
+
+        Comment capturedComment = captorComment.getValue();
+        Member capturedMember = captorMember.getValue();
+
+        assertThat(capturedComment).isEqualTo(comment);
+        assertThat(capturedMember).isEqualTo(member);
+
+    }
+
+    @Test
+    @DisplayName("댓글 좋아요 취소 실패 미존재")
+    void 댓글_좋아요_취소_실패_미존재 () {
+
+        //  파라미터 인자들
+        Long commentId = 1L;
+        MemberDto memberDto = MemberDto.builder().id(1L).build();
+
+        //  댓글과 회원 조회
+        Comment comment = Comment.builder().build();
+        ReflectionTestUtils.setField(comment, "id", 1L);
+
+        Member member = Member.builder().build();
+        ReflectionTestUtils.setField(member, "id", 1L);
+
+        //  given
+        // JPA 메서드
+        given(commentRepository.findById(commentId)).willReturn(Optional.of(comment));
+        given(memberRepository.findById(memberDto.getId())).willReturn(Optional.of(member));
+
+        // Redis 메서드
+        given(redisTemplate.opsForSet()).willReturn(setOperations);
+        given(setOperations.remove(any(), any())).willReturn(0L);
+
+        assertThatThrownBy(()->commentService.removeLike(commentId, memberDto))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.LIKE_NOT_FOUND);
+
+        verify(commentRepository, times(1)).findById(commentId);
+        verify(memberRepository, times(1)).findById(memberDto.getId());
+        String expectedKey = "like:comment:users:" + commentId;
+        verify(setOperations, times(1)).remove(eq(expectedKey), eq(member.getId()));
+        verify(commentLikeRepository, times(0)).deleteByCommentAndMember(any(), any());
+        verify(valueOperations, times(0)).decrement(any());
 
     }
 

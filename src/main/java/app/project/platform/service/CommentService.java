@@ -123,13 +123,13 @@ public class CommentService {
                 .comment(comment)
                 .member(member)
                 .build();
-        commentLikeRepository.save(commentLike);
+        CommentLike savedCommentLike = commentLikeRepository.save(commentLike);
 
         // Redis 카운트 증가 (기본 로직 유지)
         String countKey = LIKE_COMMENT_COUNT + commentId;
         redisTemplate.opsForValue().increment(countKey);
 
-        return commentLike.getId();
+        return savedCommentLike.getId();
 
     }
 
@@ -148,7 +148,7 @@ public class CommentService {
         String userLikeKey = LIKE_COMMENT_USERS + commentId;
 
         //  Redis Set에 유저 Id 추가 시도
-        //  add() 결과 값 : 1 = 새로 추가됨(성공), 0 = 이미 있음(중복)
+        //  remove() 결과 값 : 1 = 삭제, 0 = 없음
         Long isRemoved = redisTemplate.opsForSet().remove(userLikeKey, member.getId());
 
         if (isRemoved != null && isRemoved == 0) {
