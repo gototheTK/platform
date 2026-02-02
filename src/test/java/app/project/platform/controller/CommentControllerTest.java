@@ -17,9 +17,12 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -126,7 +129,7 @@ public class CommentControllerTest {
                 .text(text)
                 .build();
 
-        // gvien
+        //  given
         given(commentService.update(any(), any(), any())).willThrow(new BusinessException(ErrorCode.UNAUTHORIZED));
 
         // when & then
@@ -138,6 +141,84 @@ public class CommentControllerTest {
             .andExpect(jsonPath("$.message").value(ErrorCode.UNAUTHORIZED.getMessage()))
             .andExpect(jsonPath("$.data").isEmpty())
             .andDo(print());
+
+    }
+
+    @Test
+    @DisplayName("댓글 줗아요 성공")
+    void 댓글_좋아요_성공 () throws Exception {
+
+        Long commentId = 55L;
+
+        MemberDto memberDto = MemberDto.builder().id(1L).build();
+
+        Long commentLikeId = 100L;
+
+        //  given
+        given(commentService.addLike(eq(commentId), any(MemberDto.class))).willReturn(commentLikeId);
+
+        //  when & then
+        mockMvc.perform(post("/api/v1/comment/{id}/like", commentId)
+                .sessionAttr("LOGIN_MEMBER", memberDto))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("success"))
+            .andExpect(jsonPath("$.data").value(commentLikeId));
+
+    }
+
+    @Test
+    @DisplayName("댓글 좋아요 실패 중복")
+    void 댓글_좋아요_싪패_중복 () throws Exception {
+
+        Long commentId = 55L;
+
+        MemberDto memberDto = MemberDto.builder().id(1L).build();
+
+        //  given
+        given(commentService.addLike(eq(commentId), any(MemberDto.class))).willThrow(new BusinessException(ErrorCode.ALREADY_LIKED));
+
+        //  when & then
+        mockMvc.perform(post("/api/v1/comment/{id}/like", commentId)
+                .sessionAttr("LOGIN_MEMBER", memberDto))
+            .andExpect(status().isConflict())
+            .andExpect(jsonPath("$.status").value("fail"))
+            .andExpect(jsonPath("$.message").value(ErrorCode.ALREADY_LIKED.getMessage()));
+
+    }
+
+    @Test
+    @DisplayName("댓글 좋아요 취소 성공")
+    void 댓글_좋아요_취소_성공 () throws Exception {
+
+        Long commentId = 55L;
+
+        MemberDto memberDto = MemberDto.builder().id(1L).build();
+
+        mockMvc.perform(delete("/api/v1/comment/{id}/like", commentId)
+                .sessionAttr("LOGIN_MEMBER", memberDto))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("success"));
+
+        verify(commentService, times(1)).removeLike(eq(commentId), any(MemberDto.class));
+
+    }
+
+    @Test
+    @DisplayName("댓글 좋아요 취소 실패 중복")
+    void 댓글_좋아요_취소_실패_미존재 () throws Exception {
+
+        Long commentId = 55L;
+
+        MemberDto memberDto = MemberDto.builder().id(1L).build();
+
+        //  given
+        willThrow(new BusinessException(ErrorCode.LIKE_NOT_FOUND))
+                .given(commentService).removeLike(commentId, memberDto);
+
+        mockMvc.perform(delete("/api/v1/comment/{id}/like", commentId)
+                .sessionAttr("LOGIN_MEMBER", memberDto))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.message").value(ErrorCode.LIKE_NOT_FOUND.getMessage()));
 
     }
 

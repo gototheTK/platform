@@ -51,4 +51,24 @@ public class CommentController {
                 .ok(ApiResponse.success(null));
     }
 
+    @PostMapping("/{id}/like")
+    public ResponseEntity<ApiResponse<Long>> addLike (
+            @PathVariable(name = "id") Long id,
+            @SessionAttribute(name = "LOGIN_MEMBER") MemberDto memberDto) {
+
+        Long commentLikeId = commentService.addLike(id, memberDto);
+
+        return ResponseEntity.ok(ApiResponse.success(commentLikeId));
+    }
+
+    @DeleteMapping("/{id}/like")
+    public ResponseEntity<ApiResponse<Void>> removeLike (
+            @PathVariable(name = "id") Long id,
+            @SessionAttribute(name = "LOGIN_MEMBER") MemberDto memberDto) {
+
+        commentService.removeLike(id, memberDto);
+
+        return ResponseEntity.ok(ApiResponse.success(null));
+    }
+
 }

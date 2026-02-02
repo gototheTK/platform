@@ -146,14 +146,14 @@ public class ContentService {
             MemberDto memberDto) {
 
         String LIKE_CONTENT_USERS = "like:content:users:";
-        String LIKE_COUNT_USERS = "like:count:users";
+        String LIKE_COUNT_USERS = "like:count:users:";
 
         // 글과 회원이 존재하는가?
         Content content = contentRepository.findById(contentId).orElseThrow(() -> new BusinessException(ErrorCode.CONTENT_NOT_FOUND));
         Member member = memberRepository.findById(memberDto.getId()).orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
 
         // Redis Set 사용!
-        String userLikeKey = LIKE_CONTENT_USERS + member.getId();
+        String userLikeKey = LIKE_CONTENT_USERS + contentId;
 
         //  Redis Set에 유저 ID 추가 시도
         //  add() 결과 값: 1 = 새로 추가됨(성공), 0 = 이미 있음(중복)

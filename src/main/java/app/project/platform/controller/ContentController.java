@@ -83,7 +83,7 @@ public class ContentController {
             @PathVariable(name = "id") Long id,
             @SessionAttribute(name = "LOGIN_MEMBER") MemberDto memberDto) {
 
-        Long contentLikeId= contentService.addLike(id, memberDto);
+        Long contentLikeId = contentService.addLike(id, memberDto);
 
         return ResponseEntity.ok(ApiResponse.success(contentLikeId));
     }
