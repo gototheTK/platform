@@ -1,12 +1,16 @@
 package app.project.platform.service;
 
+import app.project.platform.domain.RedisKey;
 import app.project.platform.domain.code.ErrorCode;
 import app.project.platform.domain.dto.CommentRequestDto;
 import app.project.platform.domain.dto.CommentResponseDto;
 import app.project.platform.domain.dto.MemberDto;
 import app.project.platform.domain.type.ContentCategory;
 import app.project.platform.domain.type.Role;
-import app.project.platform.entity.*;
+import app.project.platform.entity.Comment;
+import app.project.platform.entity.CommentLike;
+import app.project.platform.entity.Content;
+import app.project.platform.entity.Member;
 import app.project.platform.exception.BusinessException;
 import app.project.platform.repository.CommentLikeRepository;
 import app.project.platform.repository.CommentRepository;
@@ -16,7 +20,6 @@ import org.assertj.core.api.ThrowableAssert;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestTemplate;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
@@ -29,7 +32,8 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.Optional;
 
-import static org.assertj.core.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
@@ -137,7 +141,7 @@ public class CommentServiceTest {
 
         Content content = createContent(1L, writer);
 
-        Comment parent = createComment(1L, content, null, stranger, "test_parent");
+        Comment parent = createComment(100L, content, null, stranger, "test_parent");
 
         Comment comment = createComment(2L, content, parent, writer, commentRequestDto.getText());
 
@@ -309,11 +313,12 @@ public class CommentServiceTest {
 
         verify(commentRepository, times(1)).findById(commentId);
         verify(memberRepository, times(1)).findById(memberDto.getId());
-        String expectedUserKey = "like:comment:users:"+commentId;
+        String expectedUserKey = RedisKey.LIKE_COMMENT_USERS.getPrefix() + commentId;
         verify(setOperations, times(1)).add(eq(expectedUserKey), eq(member.getId()));
         verify(commentLikeRepository, times(1)).save(captor.capture());
-        String expectedCountKey = "like:comment:count:"+commentId;
+        String expectedCountKey = RedisKey.LIKE_COMMENT_COUNT.getPrefix() + commentId;
         verify(valueOperations, times(1)).increment(eq(expectedCountKey));
+        verify(setOperations, times(1)).add(eq(RedisKey.LIKE_UPDATED_COMMENTS.getPrefix()), eq(commentId));
 
         CommentLike capturedCommentLike = captor.getValue();
 
@@ -349,8 +354,10 @@ public class CommentServiceTest {
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(ErrorCode.ALREADY_LIKED);
 
+        verify(setOperations, times(1)).add(any(), any());
         verify(commentLikeRepository, times(0)).save(any());
         verify(valueOperations, times(0)).increment(any());
+
 
     }
 
@@ -389,8 +396,10 @@ public class CommentServiceTest {
         verify(commentRepository, times(1)).findById(commentId);
         verify(memberRepository, times(1)).findById(memberDto.getId());
         verify(commentLikeRepository, times(1)).deleteByCommentAndMember(captorComment.capture(), captorMember.capture());
-        verify(setOperations, times(1)).remove(any(), any());
+        String userLikeKey = RedisKey.LIKE_COMMENT_USERS.getPrefix() + commentId;
+        verify(setOperations, times(1)).remove(eq(userLikeKey), eq(member.getId()));
         verify(valueOperations, times(1)).decrement(any());
+        verify(setOperations, times(1)).add(eq(RedisKey.LIKE_UPDATED_COMMENTS.getPrefix()), eq(commentId));
 
         Comment capturedComment = captorComment.getValue();
         Member capturedMember = captorMember.getValue();
@@ -431,10 +440,11 @@ public class CommentServiceTest {
 
         verify(commentRepository, times(1)).findById(commentId);
         verify(memberRepository, times(1)).findById(memberDto.getId());
-        String expectedKey = "like:comment:users:" + commentId;
+        String expectedKey = RedisKey.LIKE_COMMENT_USERS.getPrefix() + commentId;
         verify(setOperations, times(1)).remove(eq(expectedKey), eq(member.getId()));
         verify(commentLikeRepository, times(0)).deleteByCommentAndMember(any(), any());
         verify(valueOperations, times(0)).decrement(any());
+        verify(setOperations, times(0)).add(any(), any());
 
     }
 

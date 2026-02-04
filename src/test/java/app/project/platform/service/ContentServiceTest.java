@@ -1,5 +1,6 @@
 package app.project.platform.service;
 
+import app.project.platform.domain.RedisKey;
 import app.project.platform.domain.code.ErrorCode;
 import app.project.platform.domain.dto.ContentCreateRequestDto;
 import app.project.platform.domain.dto.ContentUpdateRequestDto;
@@ -26,10 +27,13 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.SetOperations;
 import org.springframework.data.redis.core.ValueOperations;
+import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -70,6 +74,9 @@ public class ContentServiceTest {
 
     @Mock
     SetOperations<String, Object> setOperations;
+
+    @Mock
+    ZSetOperations<String, Object> zSetOperations;
 
     @Test
     void 게시글_작성() throws IOException {
@@ -206,8 +213,10 @@ public class ContentServiceTest {
         Long contentLikeId = 55L;
 
         //  상수 (서비스 코드와 동일하게 맞춤)
-        String LIKE_CONTENT_USERS = "like:content:users:";
-        String LIKE_COUNT_USERS = "like:count:users:";
+        String LIKE_CONTENT_USERS = RedisKey.LIKE_CONTENT_USERS.getPrefix();
+        String LIKE_CONTENT_COUNT = RedisKey.LIKE_CONTENT_COUNT.getPrefix();
+        String LIKE_DAILY_RANKING_COUNT = RedisKey.LIKE_DAILY_RANKING_COUNT.getPrefix() + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+        String LIKE_UPDATED_CONTENTS = RedisKey.LIKE_UPDATED_CONTENTS.getPrefix();
 
         // 회원 및 글
         MemberDto memberDto = MemberDto.builder().id(memberId).build();
@@ -223,6 +232,7 @@ public class ContentServiceTest {
         given(memberRepository.findById(memberId)).willReturn(Optional.of(member));
         given(redisTemplate.opsForValue()).willReturn(valueOperations);
         given(redisTemplate.opsForSet()).willReturn(setOperations);
+        given(redisTemplate.opsForZSet()).willReturn(zSetOperations);
 
         //  Key 생성 로직을 서비스와 일치시킴 (ContentId 사용)
         String expectedUserKey = LIKE_CONTENT_USERS + contentId;
@@ -259,11 +269,12 @@ public class ContentServiceTest {
         assertThat(contentLikeArgumentCaptor.getValue().getMember().getId()).isEqualTo(memberId);
 
         //  5. Redis 카운트 검증
-        String expectedCountKey = LIKE_COUNT_USERS + contentId;
+        String expectedCountKey = LIKE_CONTENT_COUNT + contentId;
         ArgumentCaptor<String> countKeyArgumentCaptor = ArgumentCaptor.forClass(String.class);
         verify(valueOperations, times(1)).increment(countKeyArgumentCaptor.capture());
         assertThat(countKeyArgumentCaptor.getValue()).isEqualTo(expectedCountKey);
-
+        verify(zSetOperations, times(1)).incrementScore(LIKE_DAILY_RANKING_COUNT, contentId, 1);
+        verify(setOperations, times(1)).add(LIKE_UPDATED_CONTENTS, contentId);
     }
 
     @Test
@@ -273,10 +284,9 @@ public class ContentServiceTest {
         //  테스트 데이터 세팅
         Long contentId = 100L;
         Long memberId = 1L;
-        Long contentLikeId = 55L;
 
         // Redis 상수
-        String LIKE_CONTENT_USERS = "like:content:users:";
+        String LIKE_CONTENT_USERS = RedisKey.LIKE_CONTENT_USERS.getPrefix();
 
         //  회원 및 글 객체 생성
         MemberDto memberDto = MemberDto.builder().id(memberId).build();
@@ -308,6 +318,8 @@ public class ContentServiceTest {
         verify(memberRepository, times(1)).findById(memberId);
         verify(contentLikeRepository, times(0)).save(any());
         verify(valueOperations, times(0)).increment(any());
+        verify(setOperations, times(1)).add(any(), any());
+        verify(zSetOperations, times(0)).incrementScore(any(), any(), eq(1));
 
     }
 
@@ -323,8 +335,11 @@ public class ContentServiceTest {
         ReflectionTestUtils.setField(memberDto, "id", memberId);
 
         //  상수
-        String LIKE_CONTENT_USERS = "like:content:users:";
-        String LIKE_CONTENT_COUNT = "like:content:count:";
+        String LIKE_CONTENT_USERS = RedisKey.LIKE_CONTENT_USERS.getPrefix();
+        String LIKE_CONTENT_COUNT = RedisKey.LIKE_CONTENT_COUNT.getPrefix();
+        String today = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+        String LIKE_DAILY_RANKING_COUNT = RedisKey.LIKE_DAILY_RANKING_COUNT.getPrefix() + today;
+        String LIKE_UPDATED_CONTENTS = RedisKey.LIKE_UPDATED_CONTENTS.getPrefix();
 
         //  회원 및 글 객체, Redis 키 생성
         Content content = Content.builder().build();
@@ -341,6 +356,7 @@ public class ContentServiceTest {
         given(redisTemplate.opsForSet()).willReturn(setOperations);
         given(setOperations.remove(userLikeKey, member.getId())).willReturn(1L);
         given(redisTemplate.opsForValue()).willReturn(valueOperations);
+        given(redisTemplate.opsForZSet()).willReturn(zSetOperations);
 
         //  when
         contentService.removeLike(contentId, memberDto);
@@ -369,6 +385,8 @@ public class ContentServiceTest {
         String countKey = LIKE_CONTENT_COUNT + contentId;
         verify(valueOperations, times(1)).decrement(countKeyArgumentCaptor.capture());
         assertThat(countKeyArgumentCaptor.getValue()).isEqualTo(countKey);
+        verify(zSetOperations, times(1)).incrementScore(LIKE_DAILY_RANKING_COUNT, contentId, -1);
+        verify(setOperations, times(1)).add(LIKE_UPDATED_CONTENTS, contentId);
 
     }
 
@@ -381,7 +399,7 @@ public class ContentServiceTest {
         Long memberId = 1L;
 
         // 상수
-        String LIKE_CONTENT_USERS = "like:content:users:";
+        String LIKE_CONTENT_USERS = RedisKey.LIKE_CONTENT_USERS.getPrefix();
 
         //  회원 및 글 객체 세팅
         MemberDto memberDto = MemberDto.builder().id(memberId).build();
@@ -416,8 +434,9 @@ public class ContentServiceTest {
         //  처리 안되는것
         verify(contentLikeRepository, times(0)).deleteByContentAndMember(any(), any());
         verify(valueOperations, times(0)).decrement(any());
+        verify(zSetOperations, times(0)).incrementScore(any(), any(), eq(-1));
+        verify(setOperations, times(0)).add(any(), any());
 
     }
-
 
 }

@@ -1,5 +1,6 @@
 package app.project.platform.service;
 
+import app.project.platform.domain.RedisKey;
 import app.project.platform.domain.code.ErrorCode;
 import app.project.platform.domain.dto.ContentCreateRequestDto;
 import app.project.platform.domain.dto.ContentResponseDto;
@@ -20,11 +21,14 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 @Service
@@ -145,8 +149,11 @@ public class ContentService {
             Long contentId,
             MemberDto memberDto) {
 
-        String LIKE_CONTENT_USERS = "like:content:users:";
-        String LIKE_COUNT_USERS = "like:count:users:";
+        String LIKE_CONTENT_USERS = RedisKey.LIKE_CONTENT_USERS.getPrefix();
+        String LIKE_CONTENT_COUNT = RedisKey.LIKE_CONTENT_COUNT.getPrefix();
+        String today = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+        String LIKE_DAILY_RANKING_COUNT = RedisKey.LIKE_DAILY_RANKING_COUNT.getPrefix() + today;
+        String LIKE_UPDATED_CONTENTS = RedisKey.LIKE_UPDATED_CONTENTS.getPrefix();
 
         // 글과 회원이 존재하는가?
         Content content = contentRepository.findById(contentId).orElseThrow(() -> new BusinessException(ErrorCode.CONTENT_NOT_FOUND));
@@ -174,8 +181,14 @@ public class ContentService {
         contentLikeRepository.save(contentLike);
 
         //  4. Redis 카운트 증가 (기본 로직 유지)
-        String countKey = LIKE_COUNT_USERS + contentId;
+        String countKey = LIKE_CONTENT_COUNT + contentId;
         redisTemplate.opsForValue().increment(countKey);
+
+        //  5. Redis 일일 랭킹 카운트 증가
+        redisTemplate.opsForZSet().incrementScore(LIKE_DAILY_RANKING_COUNT, contentId, 1);
+
+        // 게시글 좋아요 더티 체킹
+        redisTemplate.opsForSet().add(LIKE_UPDATED_CONTENTS, contentId);
 
         return contentLike.getId();
     }
@@ -186,8 +199,11 @@ public class ContentService {
             MemberDto memberDto) {
 
         // Redis 패턴
-        String LIKE_CONTENT_USERS = "like:content:users:";
-        String LIKE_CONTENT_COUNT = "like:content:count:";
+        String LIKE_CONTENT_USERS = RedisKey.LIKE_CONTENT_USERS.getPrefix();
+        String LIKE_CONTENT_COUNT = RedisKey.LIKE_CONTENT_COUNT.getPrefix();
+        String today = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+        String LIKE_DAILY_RANKING_COUNT = RedisKey.LIKE_DAILY_RANKING_COUNT.getPrefix() + today;
+        String LIKE_UPDATED_CONTENTS = RedisKey.LIKE_UPDATED_CONTENTS.getPrefix();
 
         // 글과 회원이 존재하는가?
         Content content = contentRepository.findById(contentId).orElseThrow(() -> new BusinessException(ErrorCode.CONTENT_NOT_FOUND));
@@ -210,6 +226,12 @@ public class ContentService {
         //  Redis 카운트 감소
         String countKey = LIKE_CONTENT_COUNT + contentId;
         redisTemplate.opsForValue().decrement(countKey);
+
+        //  Redis 일일 랭킹 카운트 감소
+        redisTemplate.opsForZSet().incrementScore(LIKE_DAILY_RANKING_COUNT, contentId, -1);
+        
+        // 게시글 좋아요 더치 체킹
+        redisTemplate.opsForSet().add(LIKE_UPDATED_CONTENTS, contentId);
     }
 
 }

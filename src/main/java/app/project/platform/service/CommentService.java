@@ -1,5 +1,6 @@
 package app.project.platform.service;
 
+import app.project.platform.domain.RedisKey;
 import app.project.platform.domain.code.ErrorCode;
 import app.project.platform.domain.dto.CommentRequestDto;
 import app.project.platform.domain.dto.CommentResponseDto;
@@ -17,6 +18,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 @Service
 @RequiredArgsConstructor
@@ -100,8 +104,9 @@ public class CommentService {
     public Long addLike(Long commentId, MemberDto memberDto) {
 
         // Redis 패턴
-        String LIKE_COMMENT_USERS = "like:comment:users:";
-        String LIKE_COMMENT_COUNT = "like:comment:count:";
+        String LIKE_COMMENT_USERS = RedisKey.LIKE_COMMENT_USERS.getPrefix();
+        String LIKE_COMMENT_COUNT = RedisKey.LIKE_COMMENT_COUNT.getPrefix();
+        String LIKE_UPDATED_COMMENTS = RedisKey.LIKE_UPDATED_COMMENTS.getPrefix();
 
         // 댓글과 회원 조회
         Comment comment = commentRepository.findById(commentId).orElseThrow(() -> new BusinessException(ErrorCode.CONTENT_NOT_FOUND));
@@ -129,6 +134,9 @@ public class CommentService {
         String countKey = LIKE_COMMENT_COUNT + commentId;
         redisTemplate.opsForValue().increment(countKey);
 
+        // 커멘트 좋아요 카운트 더티 체킹
+        redisTemplate.opsForSet().add(LIKE_UPDATED_COMMENTS, commentId);
+
         return savedCommentLike.getId();
 
     }
@@ -137,8 +145,9 @@ public class CommentService {
     public void removeLike(Long commentId, MemberDto memberDto) {
 
         // Redis 패턴
-        String LIKE_COMMENT_USERS = "like:comment:users:";
-        String LIKE_COMMENT_COUNT = "like:comment:count:";
+        String LIKE_COMMENT_USERS = RedisKey.LIKE_COMMENT_USERS.getPrefix();
+        String LIKE_COMMENT_COUNT = RedisKey.LIKE_COMMENT_COUNT.getPrefix();
+        String LIKE_UPDATED_COMMENTS = RedisKey.LIKE_UPDATED_COMMENTS.getPrefix();
 
         //  댓글과 회원 조회
         Comment comment = commentRepository.findById(commentId).orElseThrow(() -> new BusinessException(ErrorCode.CONTENT_NOT_FOUND));
@@ -160,6 +169,9 @@ public class CommentService {
         //  Redis 카운트 감소 (기본 로직 유지)
         String countLikeKey = LIKE_COMMENT_COUNT + commentId;
         redisTemplate.opsForValue().decrement(countLikeKey);
+
+        //  게시글 좋아요 더티 체킹
+        redisTemplate.opsForSet().add(LIKE_UPDATED_COMMENTS, commentId);
 
     }
 
