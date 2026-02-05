@@ -2,7 +2,6 @@ package app.project.platform.controller;
 
 import app.project.platform.domain.ApiResponse;
 import app.project.platform.domain.dto.ContentResponseDto;
-import app.project.platform.entity.Content;
 import app.project.platform.service.RankingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
