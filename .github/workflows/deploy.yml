@@ -1,0 +1,72 @@
+name: platform-server
+
+# 트리거: 'main' 브랜치에 코드가 push 되면 이 스크립트가 실행됩니다.
+
+on:
+  push:
+    branches: ["main"]
+
+permissions:
+  contents: read
+
+jobs:
+  # ---------------------------
+  # Job 1: 빌드 및 테스트 (CI)
+  # ---------------------------
+  build:
+    runs-on: ubuntu-lastest
+    steps:
+      - name: 코드 체크아웃 (깃허브에서 코드를 가져옵니다)
+        uses: actions/checkout@v3
+
+      - name: JDK 17 설치
+        uses: actions/steup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      # gradlew 파일에 실행 권한을 줍니다 (이게 없으면 에러 날 수 있음)
+      - name: Gradle 권한 부여
+        run: chmod +x gradlew
+
+      # 코드를 빌드하고 테스트를 돌립니다.
+      # 테스트가 실패하면 여기서 중단되어 배포되지 않습니다! (안전장치)
+      - name: Build 및 Test 수행
+        run: ./gradlew build
+
+      # 도커허브에 로그인하고, 이미지를 만들어서 올립니다.
+      - name: Docker 이미지 빌드 및 푸시
+        run: |
+          docker login -u ${{ secrets.DOCKER_USERNAME }} -p {{ secrets.DOCKER_PASSWORD }}
+          docker build -t ${{ secrets.DOCKER_USERNAME }}/platform-server  .
+          docker push ${{ secrets.DOCKER_USERNAME }}/platform-server
+
+  # ---------------------------
+  # Job 2: 서버 배포 (CD)
+  # ---------------------------
+  deploy:
+    needs: build # byild가 성공해야만 실행됩니다.
+    runs-on: ubuntu-lastest
+    steps:
+      - name: EC2 접속 및 배포
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.KEY }}
+          script: |
+            # 1. 기존에 실행 중인 서버가 있으면 끄고 삭제합니다.
+            sudo docker stop platform-server || true
+            sudo docker rm platform-server || true
+            
+            # 2. 가장 최신 이미지를 받아옵니다.
+            sudo docker pull ${{ secrets.DOCKER_USERNAME }}/platform-server
+            
+            # 3. 새 서버를 실행합니다. (8080포트, 한국 시간 설정)
+            sudo docker run -d --name platform-server \
+            -p 8080:8080 \
+            -e TZ=Asia/Seoul \
+            ${{ secrets.DOCKER_USERNAME }}/platform-server
+            
+            # 4. 불필요한 이미지 삭제 (용량 정리)
+            sudo docker image prune -f
