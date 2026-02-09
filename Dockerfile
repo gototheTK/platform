@@ -1,12 +1,11 @@
-# 1. Base Image (Java 17 실행 환경)
-FROM openjdk:17-jdk-slim
+# 1. Base Image (안정적인 Eclipse Temurin Java 17 사용)
+FROM eclipse-temurin:17-jdk-focal
 
-# 2. Jar file location (빌드된 결과물 경로)
+# 2. Jar file location
 ARG JAR_FILE=build/libs/*.jar
 
-# 3. Copy Jar (컨테이너 내부로 파일 복사)
+# 3. Copy Jar
 COPY ${JAR_FILE} app.jar
 
-# 4. Run (실행 명령어)
-# -Duser.timezone=Asia/Seoul : 서버 시간을 한국 시간으로 고정
+# 4. Run
 ENTRYPOINT ["java", "-Duser.timezone=Asia/Seoul", "-jar", "/app.jar"]
