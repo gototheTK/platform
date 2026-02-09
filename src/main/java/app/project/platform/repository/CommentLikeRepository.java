@@ -8,7 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface CommentLikeRepository extends JpaRepository<CommentLike, Long> {
 
-    boolean existsByContentAndMember(Content content, Member member);
+    //boolean existsByContentAndMember(Content content, Member member);
 
     void deleteByCommentAndMember(Comment comment, Member member);
 
