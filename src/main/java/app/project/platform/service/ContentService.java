@@ -51,7 +51,7 @@ public class ContentService {
     // 그럼으로써 객체나 메모리 낭비를 하지 않게 합니다.
     @Transactional(readOnly = true)
     public Page<ContentResponseDto> list (Pageable pageable) {
-        return contentRepository.findAll(pageable)
+        return contentRepository.findAllWithAuthor(pageable)
                 .map(ContentResponseDto::of);
     }
 
