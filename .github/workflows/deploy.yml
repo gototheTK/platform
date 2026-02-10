@@ -69,7 +69,8 @@ jobs:
             
             # 3. 새 서버를 실행합니다. (8080포트, 한국 시간 설정)
             sudo docker run -d --name platform-server \
-            -p 8080:8080 \
+            --network host \
+            --restart unless-stopped \
             -e TZ=Asia/Seoul \
             ${{ secrets.DOCKER_USERNAME }}/platform-server
             
