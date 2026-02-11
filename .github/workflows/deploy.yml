@@ -15,6 +15,16 @@ jobs:
   # ---------------------------------------
   build:
     runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - name: 코드 체크아웃 (깃허브에서 코드를 가져옵니다)
         uses: actions/checkout@v3
@@ -32,7 +42,7 @@ jobs:
       # 코드를 빌드하고 테스트를 돌립니다.
       # 테스트가 실패하면 여기서 중단되어 배포되지 않습니다! (안전장치)
       - name: Build 및 Test 수행
-        run: ./gradlew build -x test
+        run: ./gradlew build test
 
       # 도커허브에 로그인하고, 이미지를 만들어서 올립니다.
       - name: Docker 이미지 빌드 및 푸시

@@ -22,7 +22,6 @@ public interface ContentRepository extends JpaRepository<Content, Long> {
     @Query("select c from Content c where c.id = :id")
     Optional<Content> findByIdWithLock(@Param("id") Long id);
     **/
-
     @Query(value = "select c from Content c join fetch c.author",
             countQuery = "select count(c) from Content c")
     Page<Content> findAllWithAuthor(Pageable pageable);
