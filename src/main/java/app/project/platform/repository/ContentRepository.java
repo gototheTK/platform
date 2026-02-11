@@ -12,6 +12,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.security.core.parameters.P;
 
 import javax.swing.text.html.Option;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 
@@ -25,6 +26,9 @@ public interface ContentRepository extends JpaRepository<Content, Long> {
     @Query(value = "select c from Content c join fetch c.author",
             countQuery = "select count(c) from Content c")
     Page<Content> findAllWithAuthor(Pageable pageable);
+
+    @Query(value = "select c from Content c join fetch c.author where c.id where c.id in :ids")
+    List<Content> findAllWithAuthorById(@Param("ids") List<Long> ids);
 
     @Modifying(clearAutomatically = true)   // 쿼리 실행 후 영속성 컨텍스트 비우기
     @Query(value = "update Content c set c.likeCount = c.likeCount + :count where c.id = :id")

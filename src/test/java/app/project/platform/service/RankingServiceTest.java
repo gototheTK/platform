@@ -1,7 +1,9 @@
 package app.project.platform.service;
 
 import app.project.platform.domain.dto.ContentResponseDto;
+import app.project.platform.domain.type.ContentCategory;
 import app.project.platform.entity.Content;
+import app.project.platform.entity.Member;
 import app.project.platform.repository.ContentRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -45,10 +47,16 @@ public class RankingServiceTest {
         Long firstPlaceId = 3L;
         Long secondPlaceId = 1L;
 
-        Content content1 = Content.builder().build();
+        Member member1 = Member.builder().nickname("member1").build();
+        ReflectionTestUtils.setField(member1, "id", 11L);
+
+        Content content1 = Content.builder().author(member1).category(ContentCategory.NOVEL).build();
         ReflectionTestUtils.setField(content1, "id", firstPlaceId);
 
-        Content content3 = Content.builder().build();
+        Member member3 = Member.builder().nickname("member3").build();
+        ReflectionTestUtils.setField(member3, "id", 13L);
+
+        Content content3 = Content.builder().author(member3).category(ContentCategory.CARTOON).build();
         ReflectionTestUtils.setField(content3, "id", secondPlaceId);
 
         Set<Object> rankIds = new LinkedHashSet<>();
