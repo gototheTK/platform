@@ -27,7 +27,7 @@ public interface ContentRepository extends JpaRepository<Content, Long> {
             countQuery = "select count(c) from Content c")
     Page<Content> findAllWithAuthor(Pageable pageable);
 
-    @Query(value = "select c from Content c join fetch c.author where c.id where c.id in :ids")
+    @Query(value = "select c from Content c join fetch c.author where c.id in :ids")
     List<Content> findAllWithAuthorById(@Param("ids") List<Long> ids);
 
     @Modifying(clearAutomatically = true)   // 쿼리 실행 후 영속성 컨텍스트 비우기

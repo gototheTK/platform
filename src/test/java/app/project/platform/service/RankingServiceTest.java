@@ -66,7 +66,7 @@ public class RankingServiceTest {
         //  given
         given(redisTemplate.opsForZSet()).willReturn(zSetOperations);
         given(zSetOperations.reverseRange(anyString(), anyLong(), anyLong())).willReturn(rankIds);
-        given(contentRepository.findAllById(anyList())).willReturn(List.of(content3, content1));
+        given(contentRepository.findAllWithAuthorById(anyList())).willReturn(List.of(content3, content1));
 
         //  when
         List<ContentResponseDto> result = rankingService.readDailyRankingContents(num);
@@ -80,7 +80,7 @@ public class RankingServiceTest {
 
         verify(redisTemplate, times(1)).opsForZSet();
         verify(zSetOperations, times(1)).reverseRange(anyString(), anyLong(), anyLong());
-        verify(contentRepository, times(1)).findAllById(anyList());
+        verify(contentRepository, times(1)).findAllWithAuthorById(anyList());
 
     }
 
@@ -103,7 +103,7 @@ public class RankingServiceTest {
 
         verify(redisTemplate, times(1)).opsForZSet();
         verify(zSetOperations, times(1)).reverseRange(anyString(), anyLong(), anyLong());
-        verify(contentRepository, times(0)).findAllById(anyList());
+        verify(contentRepository, times(0)).findAllWithAuthorById(anyList());
 
     }
 

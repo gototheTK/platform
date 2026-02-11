@@ -37,7 +37,7 @@ public class RankingService {
 
         List<Long> idList = idObjSet.stream().map(o -> Long.valueOf(o.toString())).toList();
 
-        Map<Long, Content> contentMap = contentRepository.findAllById(idList).stream()
+        Map<Long, Content> contentMap = contentRepository.findAllWithAuthorById(idList).stream()
                 .collect(Collectors.toMap(Content::getId, content -> content));
 
         List<ContentResponseDto> sortedContents = new ArrayList<>();
