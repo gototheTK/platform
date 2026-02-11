@@ -58,7 +58,7 @@ public class ContentService {
     @Transactional(readOnly = true)
     public ContentResponseDto read (Long id) {
 
-        Content content = contentRepository.findById(id).orElseThrow(() -> new BusinessException(ErrorCode.CONTENT_NOT_FOUND));
+        Content content = contentRepository.findByIdWithAuthor(id).orElseThrow(() -> new BusinessException(ErrorCode.CONTENT_NOT_FOUND));
 
         return ContentResponseDto.of(content);
     }
@@ -97,7 +97,7 @@ public class ContentService {
     @Transactional(rollbackFor = Exception.class)
     public ContentResponseDto update (Long id, ContentUpdateRequestDto contentUpdateRequestDto, List<MultipartFile> files, MemberDto memberDto) throws IOException {
 
-        Content content = contentRepository.findById(id).orElseThrow(() -> new BusinessException(ErrorCode.CONTENT_NOT_FOUND));
+        Content content = contentRepository.findByIdWithAuthor(id).orElseThrow(() -> new BusinessException(ErrorCode.CONTENT_NOT_FOUND));
 
         if (!content.getAuthor().getId().equals(memberDto.getId())) {
             throw new BusinessException(ErrorCode.UNAUTHORIZED);
@@ -128,7 +128,7 @@ public class ContentService {
     @Transactional
     public void delete (Long id, MemberDto memberDto) {
 
-        Content content = contentRepository.findById(id).orElseThrow(() -> new BusinessException(ErrorCode.CONTENT_NOT_FOUND));
+        Content content = contentRepository.findByIdWithAuthor(id).orElseThrow(() -> new BusinessException(ErrorCode.CONTENT_NOT_FOUND));
 
         if (!content.getAuthor().getId().equals(memberDto.getId())) {
             throw new BusinessException(ErrorCode.UNAUTHORIZED);

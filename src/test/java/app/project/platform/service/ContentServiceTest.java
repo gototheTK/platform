@@ -195,7 +195,7 @@ public class ContentServiceTest {
 
         List<MultipartFile> files = null;
 
-        given(contentRepository.findById(id)).willReturn(Optional.of(content));
+        given(contentRepository.findByIdWithAuthor(id)).willReturn(Optional.of(content));
 
         assertThatThrownBy(() -> contentService.update(id, contentRequestDto, files, memberDto))
                 .isInstanceOf(BusinessException.class)

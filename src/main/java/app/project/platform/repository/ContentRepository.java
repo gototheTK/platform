@@ -9,8 +9,12 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface ContentRepository extends JpaRepository<Content, Long> {
+
+    @Query(value = "select c from Content c join fetch c.author where c.id = :id")
+    Optional<Content> findByIdWithAuthor(@Param("id") Long id);
 
     /**
     @Lock(LockModeType.PESSIMISTIC_WRITE)
