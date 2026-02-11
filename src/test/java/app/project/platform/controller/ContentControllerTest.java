@@ -224,7 +224,7 @@ public class ContentControllerTest {
 
         given(contentService.addLike(contentId, memberDto)).willReturn(contentLikeId);
 
-        mockMvc.perform(post("/api/v1/content/like/{id}", contentId)
+        mockMvc.perform(post("/api/v1/content/{id}/like", contentId)
                 .sessionAttr("LOGIN_MEMBER", memberDto))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.status").value("success"))
@@ -241,7 +241,7 @@ public class ContentControllerTest {
 
         given(contentService.addLike(contentId, memberDto)).willThrow(new BusinessException(ErrorCode.ALREADY_LIKED));
 
-        mockMvc.perform(post("/api/v1/content/like/{id}", contentId)
+        mockMvc.perform(post("/api/v1/content/{id}/like", contentId)
                 .sessionAttr("LOGIN_MEMBER", memberDto))
             .andExpect(status().isConflict())
             .andExpect(jsonPath("$.status").value("fail"))
@@ -256,7 +256,7 @@ public class ContentControllerTest {
 
         MemberDto memberDto = MemberDto.builder().id(1L).build();
 
-        mockMvc.perform(delete("/api/v1/content/like/{id}", contentId)
+        mockMvc.perform(delete("/api/v1/content/{id}/like", contentId)
                 .sessionAttr("LOGIN_MEMBER", memberDto))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.status").value("success"));
@@ -273,7 +273,7 @@ public class ContentControllerTest {
         willThrow(new BusinessException(ErrorCode.LIKE_NOT_FOUND))
             .given(contentService).removeLike(contentId, memberDto);
 
-        mockMvc.perform(delete("/api/v1/content/like/{id}", contentId)
+        mockMvc.perform(delete("/api/v1/content/{id}/like", contentId)
                 .sessionAttr("LOGIN_MEMBER", memberDto))
             .andExpect(status().isNotFound())
             .andExpect(jsonPath("$.message").value(ErrorCode.LIKE_NOT_FOUND.getMessage()));
