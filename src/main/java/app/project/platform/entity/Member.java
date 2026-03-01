@@ -1,5 +1,6 @@
 package app.project.platform.entity;
 
+import app.project.platform.domain.type.ContentCategory;
 import app.project.platform.domain.type.Role;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -7,8 +8,8 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 
 @Entity
 @Getter
@@ -31,6 +32,26 @@ public class Member extends BaseTimeEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Role role;
+
+    @ElementCollection
+    @CollectionTable (
+            name = "member_category_view",
+            joinColumns = @JoinColumn(name = "member_id")
+    )
+    @MapKeyColumn(name = "category")
+    @Column(name = "count")
+    @Enumerated(EnumType.STRING)
+    private Map<ContentCategory, Integer> categoryView = new HashMap<>();
+
+    @ElementCollection
+    @CollectionTable(
+            name = "member_category_like",
+            joinColumns = @JoinColumn(name = "member_id")
+    )
+    @MapKeyColumn(name = "category")
+    @Column(name = "count")
+    @Enumerated(EnumType.STRING)
+    private Map<ContentCategory, Integer> categoryLike = new HashMap<>();
 
     @Builder
     public Member(String email, String password, String nickname, Role role) {

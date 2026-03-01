@@ -104,16 +104,13 @@ public class CommentService {
     public Long addLike(Long commentId, MemberDto memberDto) {
 
         // Redis 패턴
-        String LIKE_COMMENT_USERS = RedisKey.LIKE_COMMENT_USERS.getPrefix();
-        String LIKE_COMMENT_COUNT = RedisKey.LIKE_COMMENT_COUNT.getPrefix();
-        String LIKE_UPDATED_COMMENTS = RedisKey.LIKE_UPDATED_COMMENTS.getPrefix();
 
         // 댓글과 회원 조회
         Comment comment = commentRepository.findById(commentId).orElseThrow(() -> new BusinessException(ErrorCode.CONTENT_NOT_FOUND));
         Member member = memberRepository.findById(memberDto.getId()).orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
 
         // Redis Set 사용
-        String userLikeKey = LIKE_COMMENT_USERS + commentId;
+        String userLikeKey = RedisKey.LIKE_COMMENT_USERS.makeKey(commentId);
 
         // Redis Set에 유저 ID 추가 시도
         // add() 결과 값 : 1 = 새로 추가됨(성공), 0 = 이미 있음(중복)
@@ -131,11 +128,11 @@ public class CommentService {
         CommentLike savedCommentLike = commentLikeRepository.save(commentLike);
 
         // Redis 카운트 증가 (기본 로직 유지)
-        String countKey = LIKE_COMMENT_COUNT + commentId;
+        String countKey = RedisKey.LIKE_COMMENT_COUNT.makeKey(commentId);
         redisTemplate.opsForValue().increment(countKey);
 
         // 커멘트 좋아요 카운트 더티 체킹
-        redisTemplate.opsForSet().add(LIKE_UPDATED_COMMENTS, commentId);
+        redisTemplate.opsForSet().add(RedisKey.LIKE_UPDATED_COMMENTS.makeKey(), commentId);
 
         return savedCommentLike.getId();
 
@@ -144,17 +141,12 @@ public class CommentService {
     @Transactional
     public void removeLike(Long commentId, MemberDto memberDto) {
 
-        // Redis 패턴
-        String LIKE_COMMENT_USERS = RedisKey.LIKE_COMMENT_USERS.getPrefix();
-        String LIKE_COMMENT_COUNT = RedisKey.LIKE_COMMENT_COUNT.getPrefix();
-        String LIKE_UPDATED_COMMENTS = RedisKey.LIKE_UPDATED_COMMENTS.getPrefix();
-
         //  댓글과 회원 조회
         Comment comment = commentRepository.findById(commentId).orElseThrow(() -> new BusinessException(ErrorCode.CONTENT_NOT_FOUND));
         Member member = memberRepository.findById(memberDto.getId()).orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
 
         //  Redis Set 사용
-        String userLikeKey = LIKE_COMMENT_USERS + commentId;
+        String userLikeKey = RedisKey.LIKE_COMMENT_USERS.makeKey(commentId);
 
         //  Redis Set에 유저 Id 추가 시도
         //  remove() 결과 값 : 1 = 삭제, 0 = 없음
@@ -167,11 +159,11 @@ public class CommentService {
         commentLikeRepository.deleteByCommentAndMember(comment, member);
 
         //  Redis 카운트 감소 (기본 로직 유지)
-        String countLikeKey = LIKE_COMMENT_COUNT + commentId;
+        String countLikeKey = RedisKey.LIKE_COMMENT_COUNT.makeKey(commentId);
         redisTemplate.opsForValue().decrement(countLikeKey);
 
         //  게시글 좋아요 더티 체킹
-        redisTemplate.opsForSet().add(LIKE_UPDATED_COMMENTS, commentId);
+        redisTemplate.opsForSet().add(RedisKey.LIKE_UPDATED_COMMENTS.makeKey(), commentId);
 
     }
 

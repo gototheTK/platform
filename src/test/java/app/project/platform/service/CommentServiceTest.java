@@ -313,12 +313,12 @@ public class CommentServiceTest {
 
         verify(commentRepository, times(1)).findById(commentId);
         verify(memberRepository, times(1)).findById(memberDto.getId());
-        String expectedUserKey = RedisKey.LIKE_COMMENT_USERS.getPrefix() + commentId;
+        String expectedUserKey = RedisKey.LIKE_COMMENT_USERS.makeKey(commentId);
         verify(setOperations, times(1)).add(eq(expectedUserKey), eq(member.getId()));
         verify(commentLikeRepository, times(1)).save(captor.capture());
-        String expectedCountKey = RedisKey.LIKE_COMMENT_COUNT.getPrefix() + commentId;
+        String expectedCountKey = RedisKey.LIKE_COMMENT_COUNT.makeKey(commentId);
         verify(valueOperations, times(1)).increment(eq(expectedCountKey));
-        verify(setOperations, times(1)).add(eq(RedisKey.LIKE_UPDATED_COMMENTS.getPrefix()), eq(commentId));
+        verify(setOperations, times(1)).add(eq(RedisKey.LIKE_UPDATED_COMMENTS.makeKey()), eq(commentId));
 
         CommentLike capturedCommentLike = captor.getValue();
 
@@ -396,10 +396,10 @@ public class CommentServiceTest {
         verify(commentRepository, times(1)).findById(commentId);
         verify(memberRepository, times(1)).findById(memberDto.getId());
         verify(commentLikeRepository, times(1)).deleteByCommentAndMember(captorComment.capture(), captorMember.capture());
-        String userLikeKey = RedisKey.LIKE_COMMENT_USERS.getPrefix() + commentId;
+        String userLikeKey = RedisKey.LIKE_COMMENT_USERS.makeKey(commentId);
         verify(setOperations, times(1)).remove(eq(userLikeKey), eq(member.getId()));
         verify(valueOperations, times(1)).decrement(any());
-        verify(setOperations, times(1)).add(eq(RedisKey.LIKE_UPDATED_COMMENTS.getPrefix()), eq(commentId));
+        verify(setOperations, times(1)).add(eq(RedisKey.LIKE_UPDATED_COMMENTS.makeKey()), eq(commentId));
 
         Comment capturedComment = captorComment.getValue();
         Member capturedMember = captorMember.getValue();
@@ -440,7 +440,7 @@ public class CommentServiceTest {
 
         verify(commentRepository, times(1)).findById(commentId);
         verify(memberRepository, times(1)).findById(memberDto.getId());
-        String expectedKey = RedisKey.LIKE_COMMENT_USERS.getPrefix() + commentId;
+        String expectedKey = RedisKey.LIKE_COMMENT_USERS.makeKey(commentId);
         verify(setOperations, times(1)).remove(eq(expectedKey), eq(member.getId()));
         verify(commentLikeRepository, times(0)).deleteByCommentAndMember(any(), any());
         verify(valueOperations, times(0)).decrement(any());

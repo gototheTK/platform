@@ -28,8 +28,8 @@ public class LikeScheduler {
     @Transactional
     public void syncLikeCount() {
 
-        String DIRTY_KEY = RedisKey.LIKE_UPDATED_CONTENTS.getPrefix();
-        String COUNT_KEY_PREFIX = RedisKey.LIKE_CONTENT_COUNT.getPrefix();
+        String DIRTY_KEY = RedisKey.LIKE_UPDATED_CONTENTS.getPattern();
+        String COUNT_KEY_PREFIX = RedisKey.LIKE_CONTENT_COUNT.getPattern();
 
         //  1. 변경된 게시글 ID들을 팝(Pop)으로 한 번에 가져옵니다.
         //  (pop을 쓰면 가져옴과 동시에 Redis Set에 삭제되므로 중복 처리 방지됨)
@@ -63,8 +63,8 @@ public class LikeScheduler {
     @Transactional
     public void syncCommentLikeCount() {
 
-        String DIRTY_KEY = RedisKey.LIKE_UPDATED_COMMENTS.getPrefix();
-        String COUNT_KEY_PREFIX = RedisKey.LIKE_COMMENT_COUNT.getPrefix();
+        String DIRTY_KEY = RedisKey.LIKE_UPDATED_COMMENTS.getPattern();
+        String COUNT_KEY_PREFIX = RedisKey.LIKE_COMMENT_COUNT.getPattern();
 
         //  1.  변경 된 ID들을 팝으로 가져옵니다.
         List<Object> commentIds = redisTemplate.opsForSet().pop(DIRTY_KEY, 1000);

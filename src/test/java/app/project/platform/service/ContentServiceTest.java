@@ -3,6 +3,7 @@ package app.project.platform.service;
 import app.project.platform.domain.RedisKey;
 import app.project.platform.domain.code.ErrorCode;
 import app.project.platform.domain.dto.ContentCreateRequestDto;
+import app.project.platform.domain.dto.ContentResponseDto;
 import app.project.platform.domain.dto.ContentUpdateRequestDto;
 import app.project.platform.domain.dto.MemberDto;
 import app.project.platform.domain.type.ContentCategory;
@@ -17,6 +18,7 @@ import app.project.platform.repository.ContentImageRepository;
 import app.project.platform.repository.ContentLikeRepository;
 import app.project.platform.repository.ContentRepository;
 import app.project.platform.repository.MemberRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -24,19 +26,16 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.data.redis.core.SetOperations;
-import org.springframework.data.redis.core.ValueOperations;
-import org.springframework.data.redis.core.ZSetOperations;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Slice;
+import org.springframework.data.redis.core.*;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -70,6 +69,9 @@ public class ContentServiceTest {
     RedisTemplate<String, Object> redisTemplate;
 
     @Mock
+    ListOperations<String, Object> listOperations;
+
+    @Mock
     ValueOperations<String, Object> valueOperations;
 
     @Mock
@@ -77,6 +79,90 @@ public class ContentServiceTest {
 
     @Mock
     ZSetOperations<String, Object> zSetOperations;
+
+    @Mock
+    HashOperations<String, Object, Object> hashOperations;
+
+    @BeforeEach
+    void setUp() {
+        //  RedisTemplate의 opsFor 메서드들이 호출 될 때 Mock 객체를 반환하도록 설정
+        lenient().when(redisTemplate.opsForList()).thenReturn(listOperations);
+        lenient().when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        lenient().when(redisTemplate.opsForHash()).thenReturn(hashOperations);
+    }
+
+    @Test
+    void 게시글가져오기_피드버퍼가_없을_때() {
+
+        //  given
+        Long memberId = 1L;
+        MemberDto memberDto = MemberDto.builder()
+                .id(memberId)
+                .nickname("testUser")
+                .build();
+        PageRequest pageable = PageRequest.of(0, 10);
+
+        //  1. 피드 버퍼가 비어있다고 가정
+        given(listOperations.range(anyString(), anyLong(), anyLong())).willReturn(new ArrayList<>());
+
+        //  2. 커서 값 가정 (가장 최신)
+        given(valueOperations.get(anyString())).willReturn(null);
+
+        //  3. DB에서 반환될 임시 게시글 50개(여기서는 테스트를 위해 15개만) 생성
+        List<Content> mockContents = createMockContents(50);
+        given(contentRepository.findAllWithAuthorByCursor(anyLong(), eq(pageable))).willReturn(mockContents);
+
+        //  4. 유저의 취향 벡터 (Mocking)
+        Map<Object, Object> mockViewVector = new HashMap<>();
+        mockViewVector.put(ContentCategory.CARTOON.name(), "10");
+        String viewRedisKey = RedisKey.MEMBER_CATEGORY_LIKE_COUNT.makeKey(memberId);
+        given(hashOperations.entries(eq(viewRedisKey))).willReturn(mockViewVector);
+
+        Map<Object, Object> mockLikeVector = new HashMap<>();
+        mockLikeVector.put(ContentCategory.CARTOON.name(), "5");
+        String likeRedisKey = RedisKey.MEMBER_CATEGORY_VIEW_COUNT.makeKey(memberId);
+        given(hashOperations.entries(eq(likeRedisKey))).willReturn(mockLikeVector);
+
+        //  when
+        Slice<ContentResponseDto> result = contentService.list(pageable, memberDto);
+
+        //  then
+        //  1. 정상적으로 10개의 데이터가 반환되었는가?
+        assertThat(result.getContent()).hasSize(10);
+        assertThat(result.hasNext()).isTrue();
+
+        // 2. 커서가 잘 갱신되었는가? (마지막 게시글 ID로 set 되었는지 검증)
+        String feedCursorKey = RedisKey.FEED_CURSOR.makeKey(memberId);
+        verify(valueOperations, times(1)).set(eq(feedCursorKey), eq(String.valueOf(mockContents.get(49).getId())));
+
+        // 3. 남은 5개의 글이 Redis 버퍼에 잘 Push 되었는가?
+        String bufferCursorKey= RedisKey.FEED_BUFFER.makeKey(memberId);
+        verify(listOperations, times(1)).rightPushAll(eq(bufferCursorKey), any(Object[].class));
+
+        // 4. (중요) TECH 카테고리 글이 상위로 정렬되었는지 확인하는 로직 추가 가능
+        boolean isTrue = result.getContent().stream().allMatch(dto -> dto.getCategory().equals(ContentCategory.CARTOON.getName()));
+        assertThat(isTrue).isTrue();
+
+    }
+
+    //  테스트용 데이터 생성 유틸
+    private List<Content> createMockContents(int count) {
+        List<Content> contents = new ArrayList<>();
+        for (long i = 1; i <= count; i++) {
+
+            Member member = Member.builder().build();
+            ReflectionTestUtils.setField(member, "id", i);
+
+            Content content = Content.builder()
+                    .title("제목 " + i)
+                    .category(i % 2 == 0 ?ContentCategory.CARTOON : ContentCategory.NOVEL)
+                    .author(member)
+                    .build();
+            contents.add(content);
+        }
+
+        return contents;
+    }
 
     @Test
     void 게시글_작성() throws IOException {
@@ -213,10 +299,6 @@ public class ContentServiceTest {
         Long contentLikeId = 55L;
 
         //  상수 (서비스 코드와 동일하게 맞춤)
-        String LIKE_CONTENT_USERS = RedisKey.LIKE_CONTENT_USERS.getPrefix();
-        String LIKE_CONTENT_COUNT = RedisKey.LIKE_CONTENT_COUNT.getPrefix();
-        String LIKE_DAILY_RANKING_COUNT = RedisKey.LIKE_DAILY_RANKING_COUNT.getPrefix() + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
-        String LIKE_UPDATED_CONTENTS = RedisKey.LIKE_UPDATED_CONTENTS.getPrefix();
 
         // 회원 및 글
         MemberDto memberDto = MemberDto.builder().id(memberId).build();
@@ -235,7 +317,7 @@ public class ContentServiceTest {
         given(redisTemplate.opsForZSet()).willReturn(zSetOperations);
 
         //  Key 생성 로직을 서비스와 일치시킴 (ContentId 사용)
-        String expectedUserKey = LIKE_CONTENT_USERS + contentId;
+        String expectedUserKey = RedisKey.LIKE_CONTENT_USERS.makeKey(contentId);
         given(setOperations.add(eq(expectedUserKey), eq(memberId))).willReturn(1L);
 
         //  DGB 저장
@@ -269,12 +351,13 @@ public class ContentServiceTest {
         assertThat(contentLikeArgumentCaptor.getValue().getMember().getId()).isEqualTo(memberId);
 
         //  5. Redis 카운트 검증
-        String expectedCountKey = LIKE_CONTENT_COUNT + contentId;
+        String expectedCountKey = RedisKey.LIKE_CONTENT_COUNT.makeKey(contentId);
         ArgumentCaptor<String> countKeyArgumentCaptor = ArgumentCaptor.forClass(String.class);
         verify(valueOperations, times(1)).increment(countKeyArgumentCaptor.capture());
         assertThat(countKeyArgumentCaptor.getValue()).isEqualTo(expectedCountKey);
-        verify(zSetOperations, times(1)).incrementScore(LIKE_DAILY_RANKING_COUNT, contentId, 1);
-        verify(setOperations, times(1)).add(LIKE_UPDATED_CONTENTS, contentId);
+        verify(zSetOperations, times(1)).incrementScore(RedisKey.LIKE_DAILY_RANKING_COUNT.makeKey(LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"))), contentId, 1);
+        verify(setOperations, times(1)).add(RedisKey.LIKE_UPDATED_CONTENTS.makeKey(), contentId);
+        verify(hashOperations, times(1)).increment(eq(RedisKey.MEMBER_CATEGORY_LIKE_COUNT.makeKey(member.getId())), eq(content.getCategory()), eq(1L));
     }
 
     @Test
@@ -284,9 +367,6 @@ public class ContentServiceTest {
         //  테스트 데이터 세팅
         Long contentId = 100L;
         Long memberId = 1L;
-
-        // Redis 상수
-        String LIKE_CONTENT_USERS = RedisKey.LIKE_CONTENT_USERS.getPrefix();
 
         //  회원 및 글 객체 생성
         MemberDto memberDto = MemberDto.builder().id(memberId).build();
@@ -303,7 +383,7 @@ public class ContentServiceTest {
         given(memberRepository.findById(memberDto.getId())).willReturn(Optional.of(member));
 
         //  좋아요 사용
-        String expectedUserLikeKey = LIKE_CONTENT_USERS + contentId;
+        String expectedUserLikeKey = RedisKey.LIKE_CONTENT_USERS.makeKey(contentId);
         given(redisTemplate.opsForSet()).willReturn(setOperations);
         given(setOperations.add(expectedUserLikeKey, member.getId())).willReturn(0L);
 
@@ -334,13 +414,6 @@ public class ContentServiceTest {
         MemberDto memberDto = MemberDto.builder().build();
         ReflectionTestUtils.setField(memberDto, "id", memberId);
 
-        //  상수
-        String LIKE_CONTENT_USERS = RedisKey.LIKE_CONTENT_USERS.getPrefix();
-        String LIKE_CONTENT_COUNT = RedisKey.LIKE_CONTENT_COUNT.getPrefix();
-        String today = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
-        String LIKE_DAILY_RANKING_COUNT = RedisKey.LIKE_DAILY_RANKING_COUNT.getPrefix() + today;
-        String LIKE_UPDATED_CONTENTS = RedisKey.LIKE_UPDATED_CONTENTS.getPrefix();
-
         //  회원 및 글 객체, Redis 키 생성
         Content content = Content.builder().build();
         ReflectionTestUtils.setField(content, "id", contentId);
@@ -348,7 +421,7 @@ public class ContentServiceTest {
         Member member = Member.builder().build();
         ReflectionTestUtils.setField(member, "id", memberId);
 
-        String userLikeKey = LIKE_CONTENT_USERS + contentId;
+        String userLikeKey = RedisKey.LIKE_CONTENT_USERS.makeKey(contentId);
 
         //  given
         given(contentRepository.findById(contentId)).willReturn(Optional.of(content));
@@ -382,11 +455,11 @@ public class ContentServiceTest {
 
         //  Redis 카운트 감소
         ArgumentCaptor<String> countKeyArgumentCaptor = ArgumentCaptor.forClass(String.class);
-        String countKey = LIKE_CONTENT_COUNT + contentId;
+        String countKey = RedisKey.LIKE_CONTENT_COUNT.makeKey(contentId);
         verify(valueOperations, times(1)).decrement(countKeyArgumentCaptor.capture());
         assertThat(countKeyArgumentCaptor.getValue()).isEqualTo(countKey);
-        verify(zSetOperations, times(1)).incrementScore(LIKE_DAILY_RANKING_COUNT, contentId, -1);
-        verify(setOperations, times(1)).add(LIKE_UPDATED_CONTENTS, contentId);
+        verify(zSetOperations, times(1)).incrementScore(RedisKey.LIKE_DAILY_RANKING_COUNT.makeKey(LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"))), contentId, -1);
+        verify(setOperations, times(1)).add(RedisKey.LIKE_UPDATED_CONTENTS.makeKey(), contentId);
 
     }
 
@@ -399,7 +472,6 @@ public class ContentServiceTest {
         Long memberId = 1L;
 
         // 상수
-        String LIKE_CONTENT_USERS = RedisKey.LIKE_CONTENT_USERS.getPrefix();
 
         //  회원 및 글 객체 세팅
         MemberDto memberDto = MemberDto.builder().id(memberId).build();
@@ -416,7 +488,7 @@ public class ContentServiceTest {
         given(memberRepository.findById(memberDto.getId())).willReturn(Optional.of(member));
 
         //  redis 조회
-        String userLikeKey = LIKE_CONTENT_USERS + contentId;
+        String userLikeKey = RedisKey.LIKE_CONTENT_USERS.makeKey(contentId);
         given(redisTemplate.opsForSet()).willReturn(setOperations);
         given(setOperations.remove(userLikeKey, member.getId())).willReturn(0L);
 

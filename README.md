@@ -250,5 +250,9 @@ flowchart LR
     1. 글 목록 조회시 N+1 문제해결(fetch-join)
     2. 글 조회시 댓글 개수 제헌 (default_batch_fetch_size)
 
+### 2026-02-11
+    오늘의 학습 및 문제 해결
 
-    
+    1. 랭킹 조회시 회원과의 N+1 문제해결(fetch-join)
+    2. 글 상세 조회시 호원과의 N+1 문제해결(fetch-join)
+    3. 오류가 있던 테스트코드 수정(댓글 URI수정)

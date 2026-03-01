@@ -17,11 +17,12 @@ import app.project.platform.repository.ContentImageRepository;
 import app.project.platform.repository.ContentLikeRepository;
 import app.project.platform.repository.ContentRepository;
 import app.project.platform.repository.MemberRepository;
+import app.project.platform.util.SimilarityUtil;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
+import org.springframework.data.domain.SliceImpl;
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -29,7 +30,9 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.List;
+import java.util.*;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -50,15 +53,158 @@ public class ContentService {
     // JPA가 영속성컨텍스트에서 스내샷을 만들어서, 변경감지를하지 않게합니다.
     // 그럼으로써 객체나 메모리 낭비를 하지 않게 합니다.
     @Transactional(readOnly = true)
-    public Page<ContentResponseDto> list (Pageable pageable) {
+    public Slice<ContentResponseDto> list (Pageable pageable, MemberDto memberDto) {
+
+        int pageSize = 10;
+
+        if (memberDto != null) {
+
+            Long memberId = memberDto.getId();
+
+            // 피드 버퍼에 글이 있는지 확인한다
+            String feedBufferKey = RedisKey.FEED_BUFFER.makeKey(memberId);
+
+            List<Object> cachedIds = redisTemplate.opsForList().range(feedBufferKey, 0, pageSize-1);
+
+            // 피드 버퍼에 글이 존재한다면 리턴한다.
+            if (cachedIds != null && !cachedIds.isEmpty()) {
+
+                List<Long> idsToFetch = cachedIds.stream().map(o -> Long.valueOf(o.toString())).toList();
+
+                //  2. JPQL 순서 분괴 해결: DB에서 퍼온 뒤 Java에서 순서 재조립
+                List<Content> fetchedContents = contentRepository.findAllWithAuthorById(idsToFetch);
+                Map<Long, Content> contentMap = fetchedContents.stream()
+                        .collect(Collectors.toMap(Content::getId, c->c));
+
+                List<ContentResponseDto> result = idsToFetch.stream()
+                        .map(contentMap::get)
+                        .filter(Objects::nonNull)
+                        .map(ContentResponseDto::of)
+                        .toList();
+
+                //  사용한 버퍼를 지운다
+                redisTemplate.opsForList().trim(feedBufferKey, pageSize, -1);
+
+                return new SliceImpl<>(result, pageable, true);
+            }
+
+            // 피드 버퍼에 글이 없다면, 50개를 가져온다.
+            String feedCursorKey = RedisKey.FEED_CURSOR.makeKey(memberId);
+            Object value = redisTemplate.opsForValue().get(feedCursorKey);
+            Long cursor = value != null ? Long.parseLong(value.toString()) : Long.MAX_VALUE;
+
+            List<Content> contents = contentRepository.findAllWithAuthorByCursor(cursor, pageable);
+
+            // 빈 페이지시 방어 코드
+            if (contents.isEmpty()) {
+                return new SliceImpl<>(Collections.emptyList(), pageable, false);
+            }
+
+            // 커서 저장
+            Long lastId = contents.get(contents.size()-1).getId();
+            redisTemplate.opsForValue().set(feedCursorKey, String.valueOf(lastId));
+
+            //  가져온 글들을 정렬한다.
+            String viewRedisKey = RedisKey.MEMBER_CATEGORY_LIKE_COUNT.makeKey(memberId);
+            String likeRedisKey = RedisKey.MEMBER_CATEGORY_VIEW_COUNT.makeKey(memberId);
+
+            Map<ContentCategory, Integer> userViewVector = redisTemplate.opsForHash().entries(viewRedisKey)
+                    .entrySet()
+                    .stream()
+                    .collect(Collectors.toMap(
+                            entry -> ContentCategory.from(String.valueOf(entry.getKey())),
+                            entry -> Integer.parseInt(String.valueOf(entry.getValue()))
+                    ));
+
+            Map<ContentCategory, Integer> userLikeVector = redisTemplate.opsForHash().entries(likeRedisKey)
+                    .entrySet()
+                    .stream()
+                    .collect(Collectors.toMap(
+                            entry -> ContentCategory.from(String.valueOf(entry.getKey())),
+                            entry -> Integer.parseInt(String.valueOf(entry.getValue()))
+                    ));
+
+           // 글들을 기준에 따라 정렬한다.
+            List<Content> sortedContents = new ArrayList<>(contents);
+
+            double maxLikeLog = contents.stream()
+                    .mapToDouble(c -> Math.log1p(c.getLikeCount()))
+                    .max()
+                    .orElse(1.0);
+
+            Map<Content, Double> scoreMap = contents.stream()
+                            .collect(Collectors.toMap(
+                               c -> c,
+                               c -> {
+
+                                   Map<ContentCategory, Integer> viewVector = new HashMap<>();
+                                   viewVector.put(c.getCategory(), 1);
+                                   double viewSim = SimilarityUtil.calculateCosineSimilarity(viewVector, userViewVector);
+
+                                   Map<ContentCategory, Integer> likeVector = new HashMap<>();
+                                   likeVector.put(c.getCategory(), 1);
+                                   double likeSim = SimilarityUtil.calculateCosineSimilarity(likeVector, userLikeVector);
+
+                                   double popularity = SimilarityUtil.calculatePopularityWithLogScaling(c.getLikeCount().doubleValue(), maxLikeLog);
+                                   return SimilarityUtil.calculateEuclidDistanceFromIdealStatus(viewSim, likeSim, popularity);
+                               }
+                            ));
+
+            sortedContents.sort(Comparator.comparingDouble(scoreMap::get));
+
+            //  나머지 글들을 Redis List 순서대로 Push
+            if (sortedContents.size() > pageSize) {
+                List<Long> leftIds = sortedContents.subList(pageSize, sortedContents.size()).stream()
+                        .map(Content::getId)
+                        .toList();
+
+                //  rightPushAll을 이용해 한 번의 네트워크 I/O로 처리 (N+1 최적화)
+                redisTemplate.opsForList().rightPushAll(feedBufferKey, leftIds.toArray());
+            }
+
+            //  저장한 나머지 글들을 리턴한다.
+            return new SliceImpl<>(sortedContents.subList(0, Math.min(pageSize, sortedContents.size())).stream()
+                    .map(ContentResponseDto::of).toList()
+                    , pageable
+                    , true);
+
+        }
+
         return contentRepository.findAllWithAuthor(pageable)
                 .map(ContentResponseDto::of);
     }
 
     @Transactional(readOnly = true)
-    public ContentResponseDto read (Long id) {
+    public ContentResponseDto read (Long id, MemberDto memberDto) {
 
         Content content = contentRepository.findByIdWithAuthor(id).orElseThrow(() -> new BusinessException(ErrorCode.CONTENT_NOT_FOUND));
+
+        if (memberDto != null) {
+
+            Long memberId = memberDto.getId();
+            
+            // 중복 조회 확인
+
+            String logKey = RedisKey.VIEW_LOG.makeKey(memberId, id);
+
+            Boolean isFirstView = redisTemplate.opsForValue().setIfAbsent(logKey, "1", 10, TimeUnit.MINUTES);
+
+            //  조회 수 증가
+            if (Boolean.TRUE.equals(isFirstView)) {
+
+                String redisKey = RedisKey.MEMBER_CATEGORY_VIEW_COUNT.makeKey(memberId);
+                redisTemplate.opsForHash().increment(redisKey, content.getCategory(), 1);
+
+                redisTemplate.expire(redisKey
+                        , RedisKey.MEMBER_CATEGORY_VIEW_COUNT.getTtl()
+                        , RedisKey.MEMBER_CATEGORY_VIEW_COUNT.getTimeUnit());
+
+                redisTemplate.expire(logKey
+                        , RedisKey.VIEW_LOG.getTtl()
+                        , RedisKey.VIEW_LOG.getTimeUnit());
+            }
+
+        }
 
         return ContentResponseDto.of(content);
     }
@@ -149,18 +295,12 @@ public class ContentService {
             Long contentId,
             MemberDto memberDto) {
 
-        String LIKE_CONTENT_USERS = RedisKey.LIKE_CONTENT_USERS.getPrefix();
-        String LIKE_CONTENT_COUNT = RedisKey.LIKE_CONTENT_COUNT.getPrefix();
-        String today = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
-        String LIKE_DAILY_RANKING_COUNT = RedisKey.LIKE_DAILY_RANKING_COUNT.getPrefix() + today;
-        String LIKE_UPDATED_CONTENTS = RedisKey.LIKE_UPDATED_CONTENTS.getPrefix();
-
         // 글과 회원이 존재하는가?
         Content content = contentRepository.findById(contentId).orElseThrow(() -> new BusinessException(ErrorCode.CONTENT_NOT_FOUND));
         Member member = memberRepository.findById(memberDto.getId()).orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
 
         // Redis Set 사용!
-        String userLikeKey = LIKE_CONTENT_USERS + contentId;
+        String userLikeKey = RedisKey.LIKE_CONTENT_USERS.makeKey(contentId);
 
         //  Redis Set에 유저 ID 추가 시도
         //  add() 결과 값: 1 = 새로 추가됨(성공), 0 = 이미 있음(중복)
@@ -181,14 +321,20 @@ public class ContentService {
         contentLikeRepository.save(contentLike);
 
         //  4. Redis 카운트 증가 (기본 로직 유지)
-        String countKey = LIKE_CONTENT_COUNT + contentId;
+        String countKey = RedisKey.LIKE_CONTENT_COUNT.makeKey(contentId);
         redisTemplate.opsForValue().increment(countKey);
 
         //  5. Redis 일일 랭킹 카운트 증가
-        redisTemplate.opsForZSet().incrementScore(LIKE_DAILY_RANKING_COUNT, contentId, 1);
+        String today = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+        redisTemplate.opsForZSet().incrementScore(RedisKey.LIKE_DAILY_RANKING_COUNT.makeKey(today), contentId, 1);
 
         // 게시글 좋아요 더티 체킹
-        redisTemplate.opsForSet().add(LIKE_UPDATED_CONTENTS, contentId);
+        redisTemplate.opsForSet().add(RedisKey.LIKE_UPDATED_CONTENTS.makeKey(), contentId);
+
+        // 유저별 카운트 증가
+        String MEMBER_CATEGORY_LIKE_COUNT = RedisKey.MEMBER_CATEGORY_LIKE_COUNT.makeKey(member.getId());
+
+        redisTemplate.opsForHash().increment(MEMBER_CATEGORY_LIKE_COUNT, content.getCategory(), 1);
 
         return contentLike.getId();
     }
@@ -198,19 +344,12 @@ public class ContentService {
             Long contentId,
             MemberDto memberDto) {
 
-        // Redis 패턴
-        String LIKE_CONTENT_USERS = RedisKey.LIKE_CONTENT_USERS.getPrefix();
-        String LIKE_CONTENT_COUNT = RedisKey.LIKE_CONTENT_COUNT.getPrefix();
-        String today = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
-        String LIKE_DAILY_RANKING_COUNT = RedisKey.LIKE_DAILY_RANKING_COUNT.getPrefix() + today;
-        String LIKE_UPDATED_CONTENTS = RedisKey.LIKE_UPDATED_CONTENTS.getPrefix();
-
         // 글과 회원이 존재하는가?
         Content content = contentRepository.findById(contentId).orElseThrow(() -> new BusinessException(ErrorCode.CONTENT_NOT_FOUND));
         Member member = memberRepository.findById(memberDto.getId()).orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
 
         // Redis Set에서 유저 삭제
-        String userLikeKey = LIKE_CONTENT_USERS + contentId;
+        String userLikeKey = RedisKey.LIKE_CONTENT_USERS.makeKey(contentId);
 
         //  remove() 결과값: 1 = 삭제됨, 0 = 원래 없었음
         Long isRemoved = redisTemplate.opsForSet().remove(userLikeKey, member.getId());
@@ -224,14 +363,20 @@ public class ContentService {
         contentLikeRepository.deleteByContentAndMember(content, member);
         
         //  Redis 카운트 감소
-        String countKey = LIKE_CONTENT_COUNT + contentId;
+        String countKey = RedisKey.LIKE_CONTENT_COUNT.makeKey(contentId);
         redisTemplate.opsForValue().decrement(countKey);
 
         //  Redis 일일 랭킹 카운트 감소
-        redisTemplate.opsForZSet().incrementScore(LIKE_DAILY_RANKING_COUNT, contentId, -1);
+        String today = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+        redisTemplate.opsForZSet().incrementScore(RedisKey.LIKE_DAILY_RANKING_COUNT.makeKey(today), contentId, -1);
         
         // 게시글 좋아요 더치 체킹
-        redisTemplate.opsForSet().add(LIKE_UPDATED_CONTENTS, contentId);
+        redisTemplate.opsForSet().add(RedisKey.LIKE_UPDATED_CONTENTS.makeKey(), contentId);
+
+        // 유저별 카운트 증가
+        String MEMBER_CATEGORY_LIKE_COUNT = RedisKey.MEMBER_CATEGORY_LIKE_COUNT.makeKey(member.getId());
+
+        redisTemplate.opsForHash().increment(MEMBER_CATEGORY_LIKE_COUNT, content.getCategory(), -1);
     }
 
 }

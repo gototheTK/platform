@@ -10,6 +10,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.MediaType;
@@ -28,19 +29,21 @@ public class ContentController {
     private final ContentService contentService;
 
     @GetMapping
-    public ResponseEntity<ApiResponse<Page<ContentResponseDto>>> list(
-            @PageableDefault(size = 10, page = 0, direction = Sort.Direction.DESC, sort = "id") Pageable pageable) {
+    public ResponseEntity<ApiResponse<Slice<ContentResponseDto>>> list(
+            @PageableDefault(size = 50, page = 0, sort="id", direction = Sort.Direction.DESC) Pageable pageable,
+            @SessionAttribute(name = "LOGIN_MEMBER", required = false) MemberDto memberDto) {
 
-        Page<ContentResponseDto> list = contentService.list(pageable);
+        Slice<ContentResponseDto> list = contentService.list(pageable, memberDto);
 
         return ResponseEntity.ok(ApiResponse.success(list));
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<ContentResponseDto>> read(
-            @PathVariable(name = "id") Long id) {
+            @PathVariable(name = "id") Long id,
+            @SessionAttribute(name = "LOGIN_MEMBER", required = false) MemberDto memberDto) {
 
-        ContentResponseDto contentResponseDto = contentService.read(id);
+        ContentResponseDto contentResponseDto = contentService.read(id, memberDto);
 
         return ResponseEntity.ok(ApiResponse.success(contentResponseDto));
     }
