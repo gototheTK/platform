@@ -31,45 +31,55 @@ erDiagram
     MEMBER ||--o{ CONTENT : writes
     MEMBER ||--o{ COMMENT : writes
     MEMBER ||--o{ CONTENT_LIKE : likes
-    CATEGORY ||--o{ CONTENT : classifies
+    MEMBER ||--o{ COMMENT_LIKE : likes
+    MEMBER ||--o{ MEMBER_CATEGORY_VIEW : "has (ElementCollection)"
+    MEMBER ||--o{ MEMBER_CATEGORY_LIKE : "has (ElementCollection)"
     CONTENT ||--o{ COMMENT : has
     CONTENT ||--o{ CONTENT_IMAGE : contains
     CONTENT ||--o{ CONTENT_LIKE : receives
     COMMENT ||--o{ COMMENT : parent
+    COMMENT ||--o{ COMMENT_LIKE : receives
 
     MEMBER {
         bigint id PK
         varchar email "Unique"
         varchar password
         varchar nickname "Unique"
-        varchar role "Enum: ADMIN, WRITER, USER"
+        varchar role "Enum: ADMIN, USER"
         datetime created_date
         datetime modified_date
+    }
+
+    MEMBER_CATEGORY_VIEW {
+        bigint member_id FK
+        varchar category
+        int count
+    }
+
+    MEMBER_CATEGORY_LIKE {
+        bigint member_id FK
+        varchar category
+        int count
     }
 
     CONTENT {
         bigint id PK
         varchar title
         text description
-        int category_id FK
+        varchar category "Enum: NOVEL, CARTOON"
         bigint author_id FK
-        varchar thumbnail_url
+        bigint like_count
         datetime created_date
         datetime modified_date
-    }
-
-    CATEGORY {
-        int id PK
-        int code
-        varchar name
     }
 
     COMMENT {
         bigint id PK
         varchar text
         bigint content_id FK
-        bigint author_id FK
-        bigint parent_id FK "Self Join (대댓글)"
+        bigint member_id FK
+        bigint parent_id FK "Self Join"
+        bigint like_count
         datetime created_date
         datetime modified_date
     }
@@ -77,8 +87,8 @@ erDiagram
     CONTENT_IMAGE {
         bigint id PK
         bigint content_id FK
-        varchar file_url
-        varchar original_name
+        varchar original_file_name
+        varchar store_filename
     }
 ```
 - 설계 포인트: CONTENT 테이블에 like_count 컬럼을 추가(반정규화)하여, 목록 조회 시 COUNT(*) 쿼리 없이 빠르게 좋아요 수를 조회할 수 있도록 최적화했스빈다.
@@ -95,23 +105,44 @@ flowchart LR
     User[User Client] -->|"1. 좋아요 요청"| Server[Spring Boot Server]
     
     subgraph "Redis (In-Memory)"
-    Server -->|"2. 중복 체크 (Set)"| RedisSet[("Set: like:content:users:{id}")]
-    Server -->|"3. 카운트 증가 (String)"| RedisCount[("String: like:content:count:{id}")]
+        RedisSet[("Set\n(중복체크)")]
+        RedisCount[("String\n(카운트 누적)")]
+        RedisDirty[("Set\n(더티 체킹)")]
+        RedisZSet[("ZSet\n(일간 랭킹)")]
     end
     
+    Server -->|"2. 중복 검증"| RedisSet
+    Server -->|"3. 카운트++"| RedisCount
+    Server -->|"4. 변경 ID 기록"| RedisDirty
+    Server -->|"5. 랭킹 점수++"| RedisZSet
+    
     subgraph "DB (Disk)"
-    Scheduler[Like Scheduler] -->|"4. 주기적 조회 (10s)"| RedisCount
-    Scheduler -->|"5. Bulk Update"| DB[(MySQL / H2)]
+        Scheduler[Like Scheduler] -->|"6. 변경된 ID Pop (10s)"| RedisDirty
+        Scheduler -->|"7. 최종 카운트 조회"| RedisCount
+        Scheduler -->|"8. Bulk Update"| DB[(MySQL / H2)]
     end
 
     style RedisSet fill:#ffcc00,stroke:#333,stroke-width:2px
     style RedisCount fill:#ffcc00,stroke:#333,stroke-width:2px
+    style RedisDirty fill:#ffcc00,stroke:#333,stroke-width:2px
+    style RedisZSet fill:#ffcc00,stroke:#333,stroke-width:2px
     style DB fill:#00ccff,stroke:#333,stroke-width:2px
 ```
 
 1. Zero DB Query: '좋아요'요청 시 DB를 전혀 조회하지 않습니다.(기존 existsBy...)제거
 2. Redis Set: 메모리 자료구조를 사용하여 O(1) 속도로 중복 클릭을 방지합니다.
 3. Write-Back: 카운트 정보를 메모리에 모았다가, 스케줄러가 10초마다 DB에 일괄 반영합니다.
+
+---
+
+## 🧠 Custom Feed Recommendation System (개인화 추천 피드)
+
+회원의 활동(조회, 좋아요)을 바탕으로 취향을 분석하여, Redis List를 버퍼로 활용한 맞춤형 피드 제공 아키텍처입니다.
+
+1. **사용자 벡터 추출:** Redis Hash에 누적된 유저의 카테고리별 활동 기록(조회, 좋아요)을 바탕으로 사용자 취향 벡터를 생성합니다.
+2. **코사인 유사도 & 로그 스케일링 계산:** 커서 기반(No Offset)으로 DB에서 조회해 온 게시글들의 카테고리 벡터와 유저의 취향 벡터 간의 **코사인 유사도(Cosine Similarity)**를 계산하고, 게시글의 인기도(좋아요 수)에 **로그 스케일링(Log Scaling)**을 적용하여 점수를 산출합니다.
+3. **유클리드 거리 정렬:** 취향 유사도와 인기도를 종합하여 이상적인 상태로부터의 **유클리드 거리**가 가장 짧은 순으로 게시물을 정렬합니다.
+4. **Redis List 버퍼링 (N+1 최적화):** 정렬된 결과 중 사용자가 현재 페이지에서 볼 데이터 외의 나머지 데이터는 **Redis List**에 `rightPushAll`로 캐싱(Buffer)하여, 다음 페이지 요청 시 DB 정렬 연산 없이 O(1)에 가깝게 즉각 응답합니다.
 
 ---
 
@@ -256,3 +287,8 @@ flowchart LR
     1. 랭킹 조회시 회원과의 N+1 문제해결(fetch-join)
     2. 글 상세 조회시 호원과의 N+1 문제해결(fetch-join)
     3. 오류가 있던 테스트코드 수정(댓글 URI수정)
+
+### 2026-03-01
+    오늘의 학습 및 문제 해결
+    
+    1. 코사인 유사도와 유클리드 거드릴 이용한 추천글 목록 조회 구현 성공 및 테스트 코드 통과
