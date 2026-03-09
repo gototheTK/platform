@@ -22,7 +22,7 @@ public class MemberService {
 
     private final MemberRepository memberRepository;
 
-    @Transactional
+@Transactional
 public Long signup(SignupRequestDto signupRequestDto) {
 
         // 이메일 중복 확인

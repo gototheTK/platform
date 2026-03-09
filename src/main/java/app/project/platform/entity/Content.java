@@ -30,6 +30,7 @@ public class Content extends BaseTimeEntity {
     @JoinColumn(name = "member_id", nullable = false)
     private Member author;
 
+
     @OneToMany(fetch = FetchType.LAZY, cascade = CascadeType.REMOVE, orphanRemoval = true)
     private List<Comment> comments = new ArrayList<>();
 

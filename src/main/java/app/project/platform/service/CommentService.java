@@ -107,7 +107,7 @@ public class CommentService {
 
         // 댓글과 회원 조회
         Comment comment = commentRepository.findById(commentId).orElseThrow(() -> new BusinessException(ErrorCode.CONTENT_NOT_FOUND));
-        Member member = memberRepository.findById(memberDto.getId()).orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+        Member member = memberRepository.getReferenceById(memberDto.getId());
 
         // Redis Set 사용
         String userLikeKey = RedisKey.LIKE_COMMENT_USERS.makeKey(commentId);

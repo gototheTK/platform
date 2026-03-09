@@ -33,11 +33,21 @@ spring:
         show_sql: true
     defer-datasource-initialization: true
 
-logging:
-  level:
-    org.hibernate.SQL: debug
+  logging:
+    file:
+      name: ./logs/test-heavy-load.log # 프로젝트 루트의 logs 폴더 안에 생성
+    logback:
+      rollingpolicy:
+        # 로그 파일의 최대 용량 (10MB가 넘으면 압축하고 새 파일 생성)
+        max-file-size: 10MB
+        # 보관 기간 (30일 지난 로그는 자동 삭제)
+        max-history: 7
+        # 로그 파일 이름 패턴 (날짜별로 저장)
+        file-name-pattern: "${LOG_FILE}.%d{yyyy-MM-dd}.%i.gz"
 
-
+    level:
+      root: info
+      org.hibernate.SQL: debug
 
 file:
   dir: C:/images/

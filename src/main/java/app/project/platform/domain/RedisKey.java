@@ -9,6 +9,9 @@ import java.util.concurrent.TimeUnit;
 @RequiredArgsConstructor
 public enum RedisKey {
 
+    //  글 조회
+    VALID_CONTENTS("content:valid", 7, TimeUnit.DAYS),
+
     //  글 좋아요
     LIKE_CONTENT_USERS("like:content:users:%s", 7, TimeUnit.DAYS),
     LIKE_CONTENT_COUNT("like:content:count:%s", 7, TimeUnit.DAYS),

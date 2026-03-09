@@ -71,7 +71,7 @@ public class ContentService {
 
                 List<Long> idsToFetch = cachedIds.stream().map(o -> Long.valueOf(o.toString())).toList();
 
-                //  2. JPQL 순서 분괴 해결: DB에서 퍼온 뒤 Java에서 순서 재조립
+                //  2. JPQL 순서 붕괴 해결: DB에서 퍼온 뒤 Java에서 순서 재조립
                 List<Content> fetchedContents = contentRepository.findAllWithAuthorById(idsToFetch);
                 Map<Long, Content> contentMap = fetchedContents.stream()
                         .collect(Collectors.toMap(Content::getId, c->c));
@@ -179,6 +179,14 @@ public class ContentService {
 
         Content content = contentRepository.findByIdWithAuthor(id).orElseThrow(() -> new BusinessException(ErrorCode.CONTENT_NOT_FOUND));
 
+        // 글 조회 캐시
+        String contentRedisKey = RedisKey.VALID_CONTENTS.makeKey();
+
+        redisTemplate.opsForSet().add(contentRedisKey, content.getId());
+        redisTemplate.expire(contentRedisKey,
+                RedisKey.VALID_CONTENTS.getTtl(),
+                RedisKey.VALID_CONTENTS.getTimeUnit());
+
         if (memberDto != null) {
 
             Long memberId = memberDto.getId();
@@ -235,6 +243,14 @@ public class ContentService {
             }
         }
 
+        // 글 조회 캐시
+        String contentRedisKey = RedisKey.VALID_CONTENTS.makeKey();
+
+        redisTemplate.opsForSet().add(contentRedisKey, content.getId());
+        redisTemplate.expire(contentRedisKey,
+                RedisKey.VALID_CONTENTS.getTtl(),
+                RedisKey.VALID_CONTENTS.getTimeUnit());
+
         return savedContent.getId();
     }
 
@@ -285,8 +301,12 @@ public class ContentService {
         for (ContentImage file : files) {
             fileHandler.deleteFile(file.getStoreFilename());
         }
-
+        
         contentRepository.delete(content);
+
+        // 글 조회 캐시 삭제
+        String contentRedisKey = RedisKey.VALID_CONTENTS.makeKey();
+        redisTemplate.opsForSet().remove(contentRedisKey, content.getId());
 
     }
 
@@ -296,8 +316,13 @@ public class ContentService {
             MemberDto memberDto) {
 
         // 글과 회원이 존재하는가?
-        Content content = contentRepository.findById(contentId).orElseThrow(() -> new BusinessException(ErrorCode.CONTENT_NOT_FOUND));
-        Member member = memberRepository.findById(memberDto.getId()).orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+        String contentRedistKey = RedisKey.VALID_CONTENTS.makeKey();
+        boolean isValidContent = Boolean.TRUE.equals(redisTemplate.opsForSet().isMember(contentRedistKey, contentId));
+
+        if (!isValidContent) throw new BusinessException(ErrorCode.CONTENT_NOT_FOUND);
+
+        Content content = contentRepository.getReferenceById(contentId);
+        Member member = memberRepository.getReferenceById(memberDto.getId());
 
         // Redis Set 사용!
         String userLikeKey = RedisKey.LIKE_CONTENT_USERS.makeKey(contentId);
@@ -344,9 +369,15 @@ public class ContentService {
             Long contentId,
             MemberDto memberDto) {
 
+        // 글 캐싱
+        String contentRedisKey = RedisKey.VIEW_LOG.makeKey();
+        boolean isValidContent = Boolean.TRUE.equals(redisTemplate.opsForSet().isMember(contentRedisKey, contentId));
+
+        if (!isValidContent) throw new BusinessException(ErrorCode.CONTENT_NOT_FOUND);
+
         // 글과 회원이 존재하는가?
-        Content content = contentRepository.findById(contentId).orElseThrow(() -> new BusinessException(ErrorCode.CONTENT_NOT_FOUND));
-        Member member = memberRepository.findById(memberDto.getId()).orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+        Content content = contentRepository.getReferenceById(contentId);
+        Member member = memberRepository.getReferenceById(memberDto.getId());
 
         // Redis Set에서 유저 삭제
         String userLikeKey = RedisKey.LIKE_CONTENT_USERS.makeKey(contentId);
