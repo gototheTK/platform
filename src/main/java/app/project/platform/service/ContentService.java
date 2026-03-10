@@ -321,33 +321,21 @@ public class ContentService {
 
         if (!isValidContent) throw new BusinessException(ErrorCode.CONTENT_NOT_FOUND);
 
-        Content content = contentRepository.getReferenceById(contentId);
-        Member member = memberRepository.getReferenceById(memberDto.getId());
-
         // Redis Set 사용!
         String userLikeKey = RedisKey.LIKE_CONTENT_USERS.makeKey(contentId);
 
         //  Redis Set에 유저 ID 추가 시도
         //  add() 결과 값: 1 = 새로 추가됨(성공), 0 = 이미 있음(중복)
-        Long isAdded = redisTemplate.opsForSet().add(userLikeKey, member.getId());
+        Long isAdded = redisTemplate.opsForList().rightPush(userLikeKey, memberDto.getId());
 
         if (isAdded != null && isAdded == 0) {
             //  이미 Set에 들어있다면 중복 클릭임 -> 예외 던짐
             throw new BusinessException(ErrorCode.ALREADY_LIKED);
         }
 
-        //  3. DB 저장 (영속성 유지를 위해 DB에도 저장은 함)
-        //  (단, 위에서 Redis로 중복을 막았으니 DB 조회 쿼리 없이 바로 save만 하면됨)
-        //  *주의: 혹시 Redis 데이터가 날아갔을 경우를 대비해 try-catch로 DB 중복 에러를 잡는 방어 코드를 넣기도 함.
-        ContentLike contentLike = ContentLike.builder()
-                .content(content)
-                .member(member)
-                .build();
-        contentLikeRepository.save(contentLike);
-
         //  4. Redis 카운트 증가 (기본 로직 유지)
         String countKey = RedisKey.LIKE_CONTENT_COUNT.makeKey(contentId);
-        redisTemplate.opsForValue().increment(countKey);
+        Long contentLikeCount = redisTemplate.opsForValue().increment(countKey);
 
         //  5. Redis 일일 랭킹 카운트 증가
         String today = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
@@ -356,12 +344,7 @@ public class ContentService {
         // 게시글 좋아요 더티 체킹
         redisTemplate.opsForSet().add(RedisKey.LIKE_UPDATED_CONTENTS.makeKey(), contentId);
 
-        // 유저별 카운트 증가
-        String MEMBER_CATEGORY_LIKE_COUNT = RedisKey.MEMBER_CATEGORY_LIKE_COUNT.makeKey(member.getId());
-
-        redisTemplate.opsForHash().increment(MEMBER_CATEGORY_LIKE_COUNT, content.getCategory(), 1);
-
-        return contentLike.getId();
+        return contentLikeCount;
     }
 
     @Transactional
@@ -370,7 +353,7 @@ public class ContentService {
             MemberDto memberDto) {
 
         // 글 캐싱
-        String contentRedisKey = RedisKey.VIEW_LOG.makeKey();
+        String contentRedisKey = RedisKey.VALID_CONTENTS.makeKey();
         boolean isValidContent = Boolean.TRUE.equals(redisTemplate.opsForSet().isMember(contentRedisKey, contentId));
 
         if (!isValidContent) throw new BusinessException(ErrorCode.CONTENT_NOT_FOUND);
