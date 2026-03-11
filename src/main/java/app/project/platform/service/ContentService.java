@@ -326,12 +326,15 @@ public class ContentService {
 
         //  Redis Set에 유저 ID 추가 시도
         //  add() 결과 값: 1 = 새로 추가됨(성공), 0 = 이미 있음(중복)
-        Long isAdded = redisTemplate.opsForList().rightPush(userLikeKey, memberDto.getId());
+        Long isAdded = redisTemplate.opsForSet().add(userLikeKey, memberDto.getId());
 
         if (isAdded != null && isAdded == 0) {
             //  이미 Set에 들어있다면 중복 클릭임 -> 예외 던짐
             throw new BusinessException(ErrorCode.ALREADY_LIKED);
         }
+
+        // 생산자-소비자 큐 작업(List의 총길이를 반환한다.)
+        redisTemplate.opsForList().rightPush(userLikeKey, memberDto.getId());
 
         //  4. Redis 카운트 증가 (기본 로직 유지)
         String countKey = RedisKey.LIKE_CONTENT_COUNT.makeKey(contentId);
@@ -342,7 +345,7 @@ public class ContentService {
         redisTemplate.opsForZSet().incrementScore(RedisKey.LIKE_DAILY_RANKING_COUNT.makeKey(today), contentId, 1);
 
         // 게시글 좋아요 더티 체킹
-        redisTemplate.opsForSet().add(RedisKey.LIKE_UPDATED_CONTENTS.makeKey(), contentId);
+        redisTemplate.opsForSet().add(RedisKey.LIKE_UPDATED_CONTENTS.getPattern(), contentId);
 
         return contentLikeCount;
     }
@@ -385,7 +388,7 @@ public class ContentService {
         redisTemplate.opsForZSet().incrementScore(RedisKey.LIKE_DAILY_RANKING_COUNT.makeKey(today), contentId, -1);
         
         // 게시글 좋아요 더치 체킹
-        redisTemplate.opsForSet().add(RedisKey.LIKE_UPDATED_CONTENTS.makeKey(), contentId);
+        redisTemplate.opsForSet().add(RedisKey.LIKE_UPDATED_CONTENTS.getPattern(), contentId);
 
         // 유저별 카운트 증가
         String MEMBER_CATEGORY_LIKE_COUNT = RedisKey.MEMBER_CATEGORY_LIKE_COUNT.makeKey(member.getId());

@@ -15,6 +15,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -39,6 +41,9 @@ public class ContentLikeConcurrencyTest {
 
     @Autowired
     private RedisTemplate<String, Object> redisTemplate;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
     @Test
     @Disabled
@@ -103,7 +108,7 @@ public class ContentLikeConcurrencyTest {
     }
 
     @Test
-    @Disabled
+    //@Disabled
     @DisplayName("동시성 테스트: 50000명의 유저가 동시에 하나의 게시글에 좋아요를 누른다")
     public void concurrentAddLikeTest50000() throws InterruptedException {
 
@@ -114,8 +119,19 @@ public class ContentLikeConcurrencyTest {
 
         redisTemplate.delete(redisKey);
 
+        Integer alreadyMember = jdbcTemplate.queryForObject("SELECT MAX(id) FROM MEMBER", Integer.class);
+        int recentId = alreadyMember!=null ? alreadyMember : 0;
+
         List<Member> members = new ArrayList<>();
-        for (int i=1; i<=threadCount; i++) {
+
+        String insertSql = "INSERT INTO member (id, " +
+                "email," +
+                "password," +
+                "nickname," +
+                "role) " +
+                "VALUES(?, ?, ?, ?, ?)";
+
+        for (int i=1+recentId; i<=threadCount+recentId; i++) {
             Member member = Member.builder()
                     .email("test"+i+"@email.com")
                     .nickname("test"+i)
@@ -123,10 +139,20 @@ public class ContentLikeConcurrencyTest {
                     .role(Role.USER)
                     .build();
 
+            ReflectionTestUtils.setField(member, "id", (long) i);
+
             members.add(member);
         }
 
-        memberRepository.saveAll(members);
+        jdbcTemplate.batchUpdate(insertSql, members, members.size(), (ps, member) ->{
+
+            ps.setLong(1, member.getId());
+            ps.setString(2, member.getEmail());
+            ps.setString(3, member.getPassword());
+            ps.setString(4, member.getNickname());
+            ps.setString(5, Role.USER.getName());
+
+        });
 
         ExecutorService executorService = Executors.newFixedThreadPool(100);
 

@@ -318,7 +318,7 @@ public class CommentServiceTest {
         verify(commentLikeRepository, times(1)).save(captor.capture());
         String expectedCountKey = RedisKey.LIKE_COMMENT_COUNT.makeKey(commentId);
         verify(valueOperations, times(1)).increment(eq(expectedCountKey));
-        verify(setOperations, times(1)).add(eq(RedisKey.LIKE_UPDATED_COMMENTS.makeKey()), eq(commentId));
+        verify(setOperations, times(1)).add(eq(RedisKey.LIKE_UPDATED_COMMENTS.getPattern()), eq(commentId));
 
         CommentLike capturedCommentLike = captor.getValue();
 
@@ -399,7 +399,7 @@ public class CommentServiceTest {
         String userLikeKey = RedisKey.LIKE_COMMENT_USERS.makeKey(commentId);
         verify(setOperations, times(1)).remove(eq(userLikeKey), eq(member.getId()));
         verify(valueOperations, times(1)).decrement(any());
-        verify(setOperations, times(1)).add(eq(RedisKey.LIKE_UPDATED_COMMENTS.makeKey()), eq(commentId));
+        verify(setOperations, times(1)).add(eq(RedisKey.LIKE_UPDATED_COMMENTS.getPattern()), eq(commentId));
 
         Comment capturedComment = captorComment.getValue();
         Member capturedMember = captorMember.getValue();

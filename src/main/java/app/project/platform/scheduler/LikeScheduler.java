@@ -10,7 +10,9 @@ import app.project.platform.repository.ContentRepository;
 import app.project.platform.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.jdbc.JdbcTemplateAutoConfiguration;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,13 +35,14 @@ public class LikeScheduler {
 
     private final ContentLikeRepository contentLikeRepository;
 
+    private final JdbcTemplate jdbcTemplate;
+
     //  10초마다 실행 (실무에서는 1분~5분궈장)
     @Scheduled(fixedDelay = 10000)
     @Transactional
     public void syncLikeCount() {
 
-        String DIRTY_KEY = RedisKey.LIKE_UPDATED_CONTENTS.makeKey();
-        String COUNT_KEY_PREFIX = RedisKey.LIKE_CONTENT_COUNT.makeKey();
+        String DIRTY_KEY = RedisKey.LIKE_UPDATED_CONTENTS.getPattern();
 
         //  1. 변경된 게시글 ID들을 팝(Pop)으로 한 번에 가져옵니다.
         //  (pop을 쓰면 가져옴과 동시에 Redis Set에 삭제되므로 중복 처리 방지됨)
@@ -51,7 +54,7 @@ public class LikeScheduler {
 
         for (Object idObj : contentIds) {
             Long contentId = Long.valueOf(idObj.toString());
-            String redisContentCountKey = COUNT_KEY_PREFIX + contentId;
+            String redisContentCountKey = RedisKey.LIKE_CONTENT_COUNT.makeKey(contentId);
 
             Content content = contentRepository.findById(contentId).orElse(null);
 
@@ -72,43 +75,32 @@ public class LikeScheduler {
             //  Redis에서 좋아요를 누른 유저 ID들을 꺼내옵니다.
             String redisLikeContentUsersKey = RedisKey.LIKE_CONTENT_USERS.makeKey(contentId);
 
-            Long size = redisTemplate.opsForList().size(redisLikeContentUsersKey);
-
-            if (size == null) continue;
-
             // DB 적재 횟수
             long unit = 1000;
-            long times = size/unit + size%unit==0 ? 0 : 1;
+            List<Object> memberIds;
 
-            for(int i=0; i<times; i++) {
+            String insertSql = "INSERT INTO content_like (content_id, member_id) VALUES(?, ?)";
 
-                List<Object> memberIds = redisTemplate.opsForList().leftPop(redisLikeContentUsersKey, unit);
+            while ((memberIds = redisTemplate.opsForList().leftPop(redisLikeContentUsersKey, unit)) != null && !memberIds.isEmpty()) {
 
-                if (memberIds == null || memberIds.isEmpty()) break;
+                // batchUpdate
+                jdbcTemplate.batchUpdate(insertSql, memberIds, memberIds.size(), (ps, memberObj) -> {
 
-                for (Object memberIdObj : memberIds) {
+                    // INSERT 삽입 처리
+                    Long memberId = Long.valueOf(memberObj.toString());
 
-                    Long memberId = Long.valueOf(memberIdObj.toString());
+                    ps.setLong(1, contentId);
+                    ps.setLong(2, memberId);
+                });
 
-                    // 1. 껍데기(Proxy) 객체 생성! (DB SELECT 쿼리 발생 안함)
-                    Member proxyMember = memberRepository.getReferenceById(memberId);
+                for (Object memberObj : memberIds) {
 
-                    // 2. 엔티티 조립
-                    ContentLike contentLike = ContentLike.builder()
-                            .content(content)
-                            .member(proxyMember)
-                            .build();
+                    Long memberId = Long.valueOf(memberObj.toString());
 
-                    // 3. DB INSERT 쿼리
-
-
-                    // 4. 유저별 카운트 증가
+                    // 유저별 카운트 증가
                     String MEMBER_CATEGORY_LIKE_COUNT = RedisKey.MEMBER_CATEGORY_LIKE_COUNT.makeKey(memberId);
                     redisTemplate.opsForHash().increment(MEMBER_CATEGORY_LIKE_COUNT, content.getCategory(), 1);
-
                 }
-
-                //  5. DB INSERT 쿼리
 
             }
 

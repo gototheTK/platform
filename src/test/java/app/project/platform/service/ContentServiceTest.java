@@ -356,7 +356,7 @@ public class ContentServiceTest {
         verify(valueOperations, times(1)).increment(countKeyArgumentCaptor.capture());
         assertThat(countKeyArgumentCaptor.getValue()).isEqualTo(expectedCountKey);
         verify(zSetOperations, times(1)).incrementScore(RedisKey.LIKE_DAILY_RANKING_COUNT.makeKey(LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"))), contentId, 1);
-        verify(setOperations, times(1)).add(RedisKey.LIKE_UPDATED_CONTENTS.makeKey(), contentId);
+        verify(setOperations, times(1)).add(RedisKey.LIKE_UPDATED_CONTENTS.getPattern(), contentId);
         verify(hashOperations, times(1)).increment(eq(RedisKey.MEMBER_CATEGORY_LIKE_COUNT.makeKey(member.getId())), eq(content.getCategory()), eq(1L));
     }
 
@@ -459,7 +459,7 @@ public class ContentServiceTest {
         verify(valueOperations, times(1)).decrement(countKeyArgumentCaptor.capture());
         assertThat(countKeyArgumentCaptor.getValue()).isEqualTo(countKey);
         verify(zSetOperations, times(1)).incrementScore(RedisKey.LIKE_DAILY_RANKING_COUNT.makeKey(LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"))), contentId, -1);
-        verify(setOperations, times(1)).add(RedisKey.LIKE_UPDATED_CONTENTS.makeKey(), contentId);
+        verify(setOperations, times(1)).add(RedisKey.LIKE_UPDATED_CONTENTS.getPattern(), contentId);
 
     }
 

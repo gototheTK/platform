@@ -132,7 +132,7 @@ public class CommentService {
         redisTemplate.opsForValue().increment(countKey);
 
         // 커멘트 좋아요 카운트 더티 체킹
-        redisTemplate.opsForSet().add(RedisKey.LIKE_UPDATED_COMMENTS.makeKey(), commentId);
+        redisTemplate.opsForSet().add(RedisKey.LIKE_UPDATED_COMMENTS.getPattern(), commentId);
 
         return savedCommentLike.getId();
 
@@ -163,7 +163,7 @@ public class CommentService {
         redisTemplate.opsForValue().decrement(countLikeKey);
 
         //  게시글 좋아요 더티 체킹
-        redisTemplate.opsForSet().add(RedisKey.LIKE_UPDATED_COMMENTS.makeKey(), commentId);
+        redisTemplate.opsForSet().add(RedisKey.LIKE_UPDATED_COMMENTS.getPattern(), commentId);
 
     }
 
