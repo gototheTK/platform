@@ -65,6 +65,10 @@ jobs:
     steps:
       - name: EC2 접속 및 배포
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          SERVER_DB_URL: ${{ secrets.SERVER_DB_URL }}
+          SERVER_DB_USERNAME: ${{ secrets.SERVER_DB_USERNAME }}
+          SERVER_DB_PASSWORD: ${{ secrets.SERVER_DB_PASSWORD }}
         with:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
@@ -75,14 +79,17 @@ jobs:
             sudo docker rm platform-server || true
             
             # 2. 가장 최신 이미지를 받아옵니다.
-            sudo docker pull ${{ secrets.DOCKER_USERNAME }}/platform-server
+            sudo docker pull ${{ secrets.DOCKER_USERNAME }}/platform-server:last
             
             # 3. 새 서버를 실행합니다. (8080포트, 한국 시간 설정)
             sudo docker run -d --name platform-server \
             --network host \
             --restart unless-stopped \
             -e TZ=Asia/Seoul \
-            ${{ secrets.DOCKER_USERNAME }}/platform-server
+            -e SERVER_DB_URL=${{ secrets.SERVER_DB_URL }} \
+            -e SERVER_DB_USERNAME=${{ secrets.SERVER_DB_USERNAME }} \
+            -e SERVER_DB_PASSWORD=${{ secrets.SERVER_DB_PASSWORD }} \
+            ${{ secrets.DOCKER_USERNAME }}/platform-server:last
             
             # 4. 불필요한 이미지 삭제 (용량 정리)
             sudo docker image prune -f

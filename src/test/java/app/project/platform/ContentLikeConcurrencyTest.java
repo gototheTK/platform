@@ -11,6 +11,7 @@ import app.project.platform.service.MemberService;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -25,6 +26,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.in;
 
 @SpringBootTest
 @Slf4j
@@ -46,7 +48,7 @@ public class ContentLikeConcurrencyTest {
     private JdbcTemplate jdbcTemplate;
 
     @Test
-    @Disabled
+    @Tag("load-test")
     @DisplayName("동시성 테스트: 1000명의 유저가 동시에 하나의 게시글에 좋아요를 누른다")
     public void concurrentAddLikeTest1000() throws InterruptedException {
         //  given
@@ -58,8 +60,14 @@ public class ContentLikeConcurrencyTest {
         redisTemplate.delete(redisKey);
 
         //  2. 유저 1000명 미리 세팅 (CPU 병목 방지를 위해 스레드 밖에서 순차적으로 처리
+
+        Integer recentId = jdbcTemplate.queryForObject("SELECT max(id) FROM member", Integer.class);
+
+        int start = recentId == null ? 1 : recentId+1;
+        int end = threadCount + start -1;
+
         List<Member> members = new ArrayList<>();
-        for (int i=1; i<=threadCount; i++) {
+        for (int i=start; i<=end; i++) {
 
             Member member = Member.builder()
                     .email("test"+i+"@eamil.com")
@@ -68,10 +76,30 @@ public class ContentLikeConcurrencyTest {
                     .role(Role.USER)
                     .build();
 
+            ReflectionTestUtils.setField(member, "id", (long) i);
+
             members.add(member);
         }
 
-        memberRepository.saveAll(members);
+        // 데이터베이스  회원 적재
+        String insertSql = "INSERT INTO member(" +
+                "id" +
+                ", email" +
+                ", nickname" +
+                ", password" +
+                ", role" +
+                ")  " +
+                "VALUES(?, ?, ?, ?, ?)";
+
+        jdbcTemplate.batchUpdate(insertSql, members, members.size(), (ps, member) -> {
+
+            ps.setLong(1, member.getId());
+            ps.setString(2, member.getEmail());
+            ps.setString(3, member.getNickname());
+            ps.setString(4, member.getPassword());
+            ps.setString(5, member.getRole().getName());
+
+        });
 
         //  32개의 스레드가 동시에 작업을 처리하도록 스레드 풀 생성
         ExecutorService executorService = Executors.newFixedThreadPool(32);
@@ -109,6 +137,7 @@ public class ContentLikeConcurrencyTest {
 
     @Test
     //@Disabled
+    @Tag("load-test")
     @DisplayName("동시성 테스트: 50000명의 유저가 동시에 하나의 게시글에 좋아요를 누른다")
     public void concurrentAddLikeTest50000() throws InterruptedException {
 
@@ -119,8 +148,9 @@ public class ContentLikeConcurrencyTest {
 
         redisTemplate.delete(redisKey);
 
-        Integer alreadyMember = jdbcTemplate.queryForObject("SELECT MAX(id) FROM MEMBER", Integer.class);
-        int recentId = alreadyMember!=null ? alreadyMember : 0;
+        Integer recentId = jdbcTemplate.queryForObject("SELECT MAX(id) FROM MEMBER", Integer.class);
+        int start = recentId==null ? 1 : recentId+1;
+        int end = threadCount + start -1;
 
         List<Member> members = new ArrayList<>();
 
@@ -131,7 +161,7 @@ public class ContentLikeConcurrencyTest {
                 "role) " +
                 "VALUES(?, ?, ?, ?, ?)";
 
-        for (int i=1+recentId; i<=threadCount+recentId; i++) {
+        for (int i=start; i<=end; i++) {
             Member member = Member.builder()
                     .email("test"+i+"@email.com")
                     .nickname("test"+i)
@@ -144,15 +174,30 @@ public class ContentLikeConcurrencyTest {
             members.add(member);
         }
 
-        jdbcTemplate.batchUpdate(insertSql, members, members.size(), (ps, member) ->{
+        int size = members.size();
 
-            ps.setLong(1, member.getId());
-            ps.setString(2, member.getEmail());
-            ps.setString(3, member.getPassword());
-            ps.setString(4, member.getNickname());
-            ps.setString(5, Role.USER.getName());
+        int chunk = 2000;
+        int index = 0;
 
-        });
+        while (index<size) {
+
+            List<Member> list = members.subList(index, index+chunk);
+
+            if (list.isEmpty()) break;;
+
+            jdbcTemplate.batchUpdate(insertSql, list, list.size(), (ps, member) ->{
+
+                ps.setLong(1, member.getId());
+                ps.setString(2, member.getEmail());
+                ps.setString(3, member.getPassword());
+                ps.setString(4, member.getNickname());
+                ps.setString(5, Role.USER.getName());
+
+            });
+
+            index+=chunk;
+
+        }
 
         ExecutorService executorService = Executors.newFixedThreadPool(100);
 
@@ -164,10 +209,8 @@ public class ContentLikeConcurrencyTest {
             executorService.submit(()->{
 
                 try {
-
                     MemberDto memberDto = MemberDto.builder().id(member.getId()).build();
                     contentService.addLike(contentId, memberDto);
-
                 } catch (Exception e) {
                     log.error("에러 발행 : {}", e.getMessage());
                 } finally {

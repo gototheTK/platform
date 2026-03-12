@@ -17,13 +17,24 @@ spring:
 
   datasource:
     # rewriteBatchedStatements=true가 없으면 Batch Insert가 발동하지 않는다.
-    url: jdbc:mysql://localhost:3306/platform_db?rewriteBatchedStatements=true&characterEncoding=UTF-8&serverTimezone=Asia/Seoul
-    username: root
-    password: root
+    url: ${SERVER_DB_URL}
+    username: ${SERVER_DB_USERNAME}
+    password: ${SERVER_DB_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
+
+    hikari:
+      # DB 타임아웃보다 약 15~30초 짧게 설정 (단위: ms)
+      max-lifetime: 30000
+      # 커넥션을 획득하기 위해 대기하는 최대 시간
+      connection-timeout: 30000
+      # 풀에 유지할 최소 유휴 커넥션 수
+      minimum-idle: 10
+      # 풀의 최대 커넥션 수 (max_connection 고려)
+      maximum-pool-size=: 50
+
   jpa:
     hibernate:
-      ddl-auto: create
+      ddl-auto: update
     properties:
       hibernate:
         default_batch_fetch_size: 50

@@ -52,5 +52,8 @@ dependencies {
 }
 
 tasks.named('test') {
-	useJUnitPlatform()
+	useJUnitPlatform {
+        // 'load-test'라는 태그가 붙은 테스트는 빌드할 때 빼고 돌려라!
+        excludeTags 'load-test'
+    }
 }

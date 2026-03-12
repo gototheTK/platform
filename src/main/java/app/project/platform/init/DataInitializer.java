@@ -10,6 +10,7 @@ import app.project.platform.service.ContentService;
 import app.project.platform.service.MemberService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -24,8 +25,14 @@ public class DataInitializer implements CommandLineRunner {
 
     private final ContentService contentService;
 
+    private final JdbcTemplate jdbcTemplate;
+
     @Override
     public void run(String... args) throws Exception {
+
+        Integer contentCount = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM CONTENT" ,Integer.class);
+
+        if (contentCount != null && contentCount > 0) return;
 
         String email = "test@email.com";
         String nickname = "test";
