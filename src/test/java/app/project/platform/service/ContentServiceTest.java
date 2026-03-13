@@ -217,6 +217,7 @@ public class ContentServiceTest {
 
         given(fileHandler.storeFile(any(), any())).willReturn(contentImage);
         given(contentImageRepository.save(contentImage)).willReturn(contentImage);
+        given(redisTemplate.opsForSet()).willReturn(setOperations);
 
         //  when
         Long savedId = contentService.create(contentCreateRequestDto, files, memberDto);
