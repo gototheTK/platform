@@ -62,6 +62,25 @@ jobs:
   deploy:
     needs: build # build가 성공해야만 실행됩니다.
     runs-on: ubuntu-latest
+    # 테스트 환경을 위한 가상 서비스(DB, Redis) 띄우기
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: ${{ secrets.SERVER_DB_PASSWORD }} # 로컬 application.yml의 비밀번호와 맞추세요
+          MYSQL_DATABASE: ${{ secrets.SERVER_DB_NAME }} # 로컬 application.yml의 DB명과 맞추세요
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+
+      redis:
+        image: redis:latest
+        ports:
+          - 6379:6379
     steps:
       - name: EC2 접속 및 배포
         uses: appleboy/ssh-action@v1.0.3
