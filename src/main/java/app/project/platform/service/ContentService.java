@@ -316,17 +316,21 @@ public class ContentService {
             MemberDto memberDto) {
 
         // 글과 회원이 존재하는가?
-        String contentRedistKey = RedisKey.VALID_CONTENTS.makeKey();
-        boolean isValidContent = Boolean.TRUE.equals(redisTemplate.opsForSet().isMember(contentRedistKey, contentId));
+        String redisValidContents = RedisKey.VALID_CONTENTS.makeKey();
+        boolean isValidContent = Boolean.TRUE.equals(redisTemplate.opsForSet().isMember(redisValidContents, contentId));
 
-        if (!isValidContent) throw new BusinessException(ErrorCode.CONTENT_NOT_FOUND);
+        if (!isValidContent) {
+            boolean isContent = contentRepository.existsById(contentId);
+            if (!isContent) throw new BusinessException(ErrorCode.CONTENT_NOT_FOUND);
+            redisTemplate.opsForSet().add(redisValidContents, contentId);
+        }
 
         // Redis Set 사용!
-        String userLikeKey = RedisKey.LIKE_CONTENT_USERS.makeKey(contentId);
+        String redisLikeContentUsers = RedisKey.LIKE_CONTENT_USERS.makeKey(contentId);
 
         //  Redis Set에 유저 ID 추가 시도
         //  add() 결과 값: 1 = 새로 추가됨(성공), 0 = 이미 있음(중복)
-        Long isAdded = redisTemplate.opsForSet().add(userLikeKey, memberDto.getId());
+        Long isAdded = redisTemplate.opsForSet().add(redisLikeContentUsers, memberDto.getId());
 
         if (isAdded != null && isAdded == 0) {
             //  이미 Set에 들어있다면 중복 클릭임 -> 예외 던짐
@@ -334,18 +338,19 @@ public class ContentService {
         }
 
         // 생산자-소비자 큐 작업(List의 총길이를 반환한다.)
-        redisTemplate.opsForList().rightPush(userLikeKey, memberDto.getId());
+        String redisLikeContentUsersQueue = RedisKey.LIKE_CONTENT_USERS_QUEUE.makeKey(contentId);
+        redisTemplate.opsForList().rightPush(redisLikeContentUsersQueue, memberDto.getId());
 
-        //  4. Redis 카운트 증가 (기본 로직 유지)
-        String countKey = RedisKey.LIKE_CONTENT_COUNT.makeKey(contentId);
-        Long contentLikeCount = redisTemplate.opsForValue().increment(countKey);
+        //  Redis 카운트 증가 (기본 로직 유지)
+        String redisLikeContentCount = RedisKey.LIKE_CONTENT_COUNT.makeKey(contentId);
+        Long contentLikeCount = redisTemplate.opsForValue().increment(redisLikeContentCount);
 
-        //  5. Redis 일일 랭킹 카운트 증가
+        //  Redis 일일 랭킹 카운트 증가
         String today = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
         redisTemplate.opsForZSet().incrementScore(RedisKey.LIKE_DAILY_RANKING_COUNT.makeKey(today), contentId, 1);
 
         // 게시글 좋아요 더티 체킹
-        redisTemplate.opsForSet().add(RedisKey.LIKE_UPDATED_CONTENTS.getPattern(), contentId);
+        redisTemplate.opsForSet().add(RedisKey.LIKE_UPDATED_CONTENTS.makeKey(), contentId);
 
         return contentLikeCount;
     }
@@ -356,44 +361,41 @@ public class ContentService {
             MemberDto memberDto) {
 
         // 글 캐싱
-        String contentRedisKey = RedisKey.VALID_CONTENTS.makeKey();
-        boolean isValidContent = Boolean.TRUE.equals(redisTemplate.opsForSet().isMember(contentRedisKey, contentId));
+        String redisValidContents = RedisKey.VALID_CONTENTS.makeKey();
+        boolean isValidContent = Boolean.TRUE.equals(redisTemplate.opsForSet().isMember(redisValidContents, contentId));
 
-        if (!isValidContent) throw new BusinessException(ErrorCode.CONTENT_NOT_FOUND);
-
-        // 글과 회원이 존재하는가?
-        Content content = contentRepository.getReferenceById(contentId);
-        Member member = memberRepository.getReferenceById(memberDto.getId());
+        if (!isValidContent) {
+            boolean isContent = contentRepository.existsById(contentId);
+            if (!isContent) throw new BusinessException(ErrorCode.CONTENT_NOT_FOUND);
+            redisTemplate.opsForSet().add(redisValidContents, contentId);
+        }
 
         // Redis Set에서 유저 삭제
-        String userLikeKey = RedisKey.LIKE_CONTENT_USERS.makeKey(contentId);
+        String redisLikeContentUsers = RedisKey.LIKE_CONTENT_USERS.makeKey(contentId);
 
         //  remove() 결과값: 1 = 삭제됨, 0 = 원래 없었음
-        Long isRemoved = redisTemplate.opsForSet().remove(userLikeKey, member.getId());
+        Long isRemoved = redisTemplate.opsForSet().remove(redisLikeContentUsers, memberDto.getId());
 
         if (isRemoved != null && isRemoved == 0) {
             //  이미 Set에 들어있다면 중복 클릭임 -> 예외 던짐
             throw new BusinessException(ErrorCode.LIKE_NOT_FOUND);
         }
-        
-        //  DB 삭제
-        contentLikeRepository.deleteByContentAndMember(content, member);
-        
-        //  Redis 카운트 감소
-        String countKey = RedisKey.LIKE_CONTENT_COUNT.makeKey(contentId);
-        redisTemplate.opsForValue().decrement(countKey);
+
+        // 생산자-소비자 큐 작업(List의 총길이를 반환한다.)
+        String redisLikeContentUsersRemoveQueue = RedisKey.LIKE_CONTENT_USERS_REMOVE_QUEUE.makeKey(contentId);
+        redisTemplate.opsForList().rightPush(redisLikeContentUsersRemoveQueue, memberDto.getId());
+
+        // 4. Redis 카운트 감소
+        String redisLikeContentCount = RedisKey.LIKE_CONTENT_COUNT.makeKey(contentId);
+        redisTemplate.opsForValue().decrement(redisLikeContentCount);
 
         //  Redis 일일 랭킹 카운트 감소
         String today = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
         redisTemplate.opsForZSet().incrementScore(RedisKey.LIKE_DAILY_RANKING_COUNT.makeKey(today), contentId, -1);
-        
+
         // 게시글 좋아요 더치 체킹
-        redisTemplate.opsForSet().add(RedisKey.LIKE_UPDATED_CONTENTS.getPattern(), contentId);
+        redisTemplate.opsForSet().add(RedisKey.LIKE_UPDATED_CONTENTS.makeKey(), contentId);
 
-        // 유저별 카운트 증가
-        String MEMBER_CATEGORY_LIKE_COUNT = RedisKey.MEMBER_CATEGORY_LIKE_COUNT.makeKey(member.getId());
-
-        redisTemplate.opsForHash().increment(MEMBER_CATEGORY_LIKE_COUNT, content.getCategory(), -1);
     }
 
 }

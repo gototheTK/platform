@@ -11,14 +11,20 @@ public enum RedisKey {
 
     //  글 조회
     VALID_CONTENTS("content:valid", 7, TimeUnit.DAYS),
+    VALID_COMMENTS("comment:valid", 7, TimeUnit.DAYS),
 
     //  글 좋아요
     LIKE_CONTENT_USERS("like:content:users:%s", 7, TimeUnit.DAYS),
+    LIKE_CONTENT_USERS_QUEUE("like:content:users:%s", 7, TimeUnit.DAYS),
+    LIKE_CONTENT_USERS_REMOVE_QUEUE("like:content:users:%s", 7, TimeUnit.DAYS),
     LIKE_CONTENT_COUNT("like:content:count:%s", 7, TimeUnit.DAYS),
     LIKE_UPDATED_CONTENTS("like:updated:contents", 7, TimeUnit.DAYS),
     LIKE_DAILY_RANKING_COUNT("like:ranking:daily:count:%s", 7, TimeUnit.DAYS),
 
-    LIKE_COMMENT_USERS("like:comment:users:%s", 7, TimeUnit.DAYS),
+    // 댓글 좋아요
+    LIKE_COMMENT_USERS_SET("like:comment:users:%s", 7, TimeUnit.DAYS),
+    LIKE_COMMENT_USERS_QUEUE("like:comment:users:%s", 7, TimeUnit.DAYS),
+    LIKE_COMMENT_USERS_REMOVE_QUEUE("like:comment:users:remove:%s", 7, TimeUnit.DAYS),
     LIKE_COMMENT_COUNT("like:comment:count:%s", 7, TimeUnit.DAYS),
     LIKE_UPDATED_COMMENTS("like:updated:comments", 7, TimeUnit.DAYS),
 

@@ -1,11 +1,9 @@
 package app.project.platform.init;
 
-import app.project.platform.domain.dto.ContentCreateRequestDto;
-import app.project.platform.domain.dto.ContentResponseDto;
-import app.project.platform.domain.dto.MemberDto;
-import app.project.platform.domain.dto.SignupRequestDto;
+import app.project.platform.domain.dto.*;
 import app.project.platform.domain.type.ContentCategory;
 import app.project.platform.domain.type.Role;
+import app.project.platform.service.CommentService;
 import app.project.platform.service.ContentService;
 import app.project.platform.service.MemberService;
 import lombok.RequiredArgsConstructor;
@@ -27,12 +25,16 @@ public class DataInitializer implements CommandLineRunner {
 
     private final JdbcTemplate jdbcTemplate;
 
+    private final CommentService commentService;
+
     @Override
     public void run(String... args) throws Exception {
 
         Integer contentCount = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM CONTENT" ,Integer.class);
+        Integer commentCount = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM COMMENT" ,Integer.class);
 
         if (contentCount != null && contentCount > 0) return;
+        if (commentCount != null && commentCount > 0) return;
 
         String email = "test@email.com";
         String nickname = "test";
@@ -61,7 +63,15 @@ public class DataInitializer implements CommandLineRunner {
                 .role(Role.USER.getName())
                 .build();
 
-        contentService.create(contentCreateRequestDto, files, memberDto);
+        Long contentId = contentService.create(contentCreateRequestDto, files, memberDto);
+
+        CommentRequestDto commentRequestDto = CommentRequestDto.builder()
+                        .id(1L)
+                        .contentId(contentId)
+                        .text("text")
+                        .build();
+
+        commentService.create(commentRequestDto, memberDto);
 
     }
 }

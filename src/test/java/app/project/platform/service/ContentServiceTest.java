@@ -291,223 +291,336 @@ public class ContentServiceTest {
 
     @Test
     @DisplayName("좋아요 성공 검사")
-    void 좋아요_성공() {
+    void 좋아요_성공_캐시_히트() {
 
-        // 1. 테스트 데이터 세팅
+        // 파라미터 및 테스트 데이터 세팅
         Long contentId = 100L; // (구분을 위해 1L 대신 100L 사용)
         Long memberId = 1L;
-        Long contentLikeId = 55L;
+        Long totalCount = 15L;
+        double delta = 1;
 
-        //  상수 (서비스 코드와 동일하게 맞춤)
-
-        // 회원 및 글
         MemberDto memberDto = MemberDto.builder().id(memberId).build();
 
-        Content content = Content.builder().build();
-        ReflectionTestUtils.setField(content, "id", contentId);
+        String today = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
 
-        Member member = Member.builder().build();
-        ReflectionTestUtils.setField(member, "id", memberDto.getId());
+        // Redis의 키
+        String redisValidContents = RedisKey.VALID_CONTENTS.makeKey();
+        String redisLikeContentUsers = RedisKey.LIKE_CONTENT_USERS.makeKey(contentId);
+        String redisLikeContentUsersQueue = RedisKey.LIKE_CONTENT_USERS_QUEUE.makeKey(contentId);
+        String redisLikeContentCount = RedisKey.LIKE_CONTENT_COUNT.makeKey(contentId);
+        String redisLikeDailyRankingCount = RedisKey.LIKE_DAILY_RANKING_COUNT.makeKey(today);
+        String redisLikeUpdatedContents = RedisKey.LIKE_UPDATED_CONTENTS.makeKey();
+
 
         //  given (Mocking)
-        given(contentRepository.findById(contentId)).willReturn(Optional.of(content));
-        given(memberRepository.findById(memberId)).willReturn(Optional.of(member));
+
+        // Redis 처리 반환
         given(redisTemplate.opsForValue()).willReturn(valueOperations);
         given(redisTemplate.opsForSet()).willReturn(setOperations);
         given(redisTemplate.opsForZSet()).willReturn(zSetOperations);
-
-        //  Key 생성 로직을 서비스와 일치시킴 (ContentId 사용)
-        String expectedUserKey = RedisKey.LIKE_CONTENT_USERS.makeKey(contentId);
-        given(setOperations.add(eq(expectedUserKey), eq(memberId))).willReturn(1L);
-
-        //  DGB 저장
-        given(contentLikeRepository.save(any())).willAnswer( invocationOnMock -> {
-
-            ContentLike contentLike  = invocationOnMock.getArgument(0);
-            ReflectionTestUtils.setField(contentLike, "id", contentLikeId);
-            return contentLike;
-        });
+        
+        // 로직 반환 처리
+        given(setOperations.isMember(eq(redisValidContents), eq(contentId))).willReturn(true);
+        given(setOperations.add(eq(redisLikeContentUsers), eq(memberDto.getId()))).willReturn(1L);
+        given(valueOperations.increment(eq(redisLikeContentCount))).willReturn(totalCount);
 
         //  when
         Long resultId = contentService.addLike(contentId, memberDto);
+        assertThat(resultId).isEqualTo(totalCount);
 
-        //  then
-
-        //  1. 리턴값 검증
-        assertThat(resultId).isEqualTo(contentLikeId);
-
-        //  2. JPA 조회 검증
-        verify(contentRepository, times(1)).findById(contentId);
-        verify(memberRepository, times(1)).findById(memberId);
-
-        //  3.  Redis Set 중복 체크 검증 (Key 확인)
-        verify(setOperations, times(1)).add(eq(expectedUserKey), eq(member.getId()));
-
-        //  4. DB 저장 검증
-        ArgumentCaptor<ContentLike> contentLikeArgumentCaptor = ArgumentCaptor.forClass(ContentLike.class);
-        verify(contentLikeRepository, times(1)).save(contentLikeArgumentCaptor.capture());
-
-        assertThat(contentLikeArgumentCaptor.getValue().getContent().getId()).isEqualTo(contentId);
-        assertThat(contentLikeArgumentCaptor.getValue().getMember().getId()).isEqualTo(memberId);
-
-        //  5. Redis 카운트 검증
-        String expectedCountKey = RedisKey.LIKE_CONTENT_COUNT.makeKey(contentId);
-        ArgumentCaptor<String> countKeyArgumentCaptor = ArgumentCaptor.forClass(String.class);
-        verify(valueOperations, times(1)).increment(countKeyArgumentCaptor.capture());
-        assertThat(countKeyArgumentCaptor.getValue()).isEqualTo(expectedCountKey);
-        verify(zSetOperations, times(1)).incrementScore(RedisKey.LIKE_DAILY_RANKING_COUNT.makeKey(LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"))), contentId, 1);
-        verify(setOperations, times(1)).add(RedisKey.LIKE_UPDATED_CONTENTS.getPattern(), contentId);
-        verify(hashOperations, times(1)).increment(eq(RedisKey.MEMBER_CATEGORY_LIKE_COUNT.makeKey(member.getId())), eq(content.getCategory()), eq(1L));
+        // when
+        verify(setOperations, times(1)).isMember(eq(redisValidContents), eq(contentId));
+        verify(setOperations, times(1)).add(eq(redisLikeContentUsers), eq(memberDto.getId()));
+        verify(listOperations, times(1)).rightPush(eq(redisLikeContentUsersQueue), eq(memberDto.getId()));
+        verify(valueOperations, times(1)).increment(eq(redisLikeContentCount));
+        verify(zSetOperations, times(1)).incrementScore(eq(redisLikeDailyRankingCount), eq(contentId), eq(delta));
+        verify(setOperations, times(1)).add(eq(redisLikeUpdatedContents), eq(contentId));
+        
     }
 
     @Test
-    @DisplayName("좋아요_실패_중복")
-    void 좋아요_실패_중복 () {
+    @DisplayName("좋아요 성공 검사")
+    void 좋아요_성공_캐시_미스_DB_조회() {
 
-        //  테스트 데이터 세팅
-        Long contentId = 100L;
+        // 파라미터 및 테스트 데이터 세팅
+        Long contentId = 100L; // (구분을 위해 1L 대신 100L 사용)
+        Long memberId = 1L;
+        Long totalCount = 15L;
+        long success = 1L;
+        double delta = 1;
+
+        MemberDto memberDto = MemberDto.builder().id(memberId).build();
+
+        String today = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+
+        // Redis의 키
+        String redisValidContents = RedisKey.VALID_CONTENTS.makeKey();
+        String redisLikeContentUsers = RedisKey.LIKE_CONTENT_USERS.makeKey(contentId);
+        String redisLikeContentUsersQueue = RedisKey.LIKE_CONTENT_USERS_QUEUE.makeKey(contentId);
+        String redisLikeContentCount = RedisKey.LIKE_CONTENT_COUNT.makeKey(contentId);
+        String redisLikeDailyRankingCount = RedisKey.LIKE_DAILY_RANKING_COUNT.makeKey(today);
+        String redisLikeUpdatedContents = RedisKey.LIKE_UPDATED_CONTENTS.makeKey();
+
+
+        //  given
+        // Redis 처리 반환
+        given(redisTemplate.opsForValue()).willReturn(valueOperations);
+        given(redisTemplate.opsForSet()).willReturn(setOperations);
+        given(redisTemplate.opsForZSet()).willReturn(zSetOperations);
+
+        // 로직 반환 처리
+        given(setOperations.isMember(eq(redisValidContents), eq(contentId))).willReturn(false);
+        given(contentRepository.existsById(eq(contentId))).willReturn(true);
+        given(setOperations.add(eq(redisValidContents), eq(contentId))).willReturn(1L);
+        given(setOperations.add(eq(redisLikeContentUsers), eq(memberDto.getId()))).willReturn(success);
+        given(valueOperations.increment(eq(redisLikeContentCount))).willReturn(totalCount);
+
+        //  when
+        Long resultId = contentService.addLike(contentId, memberDto);
+        assertThat(resultId).isEqualTo(totalCount);
+
+        // when
+        verify(setOperations, times(1)).isMember(eq(redisValidContents), eq(contentId));
+        verify(contentRepository, times(1)).existsById(eq(contentId));
+        verify(setOperations, times(1)).add(eq(redisValidContents), eq(contentId));
+        verify(setOperations, times(1)).add(eq(redisLikeContentUsers), eq(memberDto.getId()));
+        verify(listOperations, times(1)).rightPush(eq(redisLikeContentUsersQueue), eq(memberDto.getId()));
+        verify(valueOperations, times(1)).increment(eq(redisLikeContentCount));
+        verify(zSetOperations, times(1)).incrementScore(eq(redisLikeDailyRankingCount), eq(contentId), eq(delta));
+        verify(setOperations, times(1)).add(eq(redisLikeUpdatedContents), eq(contentId));
+
+    }
+
+    @Test
+    @DisplayName("좋아요_실패_글_미존재")
+    void 좋아요_실패_글_미존재 () {
+        // 파라미터 및 테스트 데이터 세팅
+        Long contentId = 100L; // (구분을 위해 1L 대신 100L 사용)
         Long memberId = 1L;
 
-        //  회원 및 글 객체 생성
+        MemberDto memberDto = MemberDto.builder().id(memberId).build();
+
+        // Redis 키
+        String redisValidContents = RedisKey.VALID_CONTENTS.makeKey();
+
+        //  given
+        //  Reids 처리 반환
+        given(redisTemplate.opsForSet()).willReturn(setOperations);
+
+        //  로직 처리 반환
+        given(setOperations.isMember(eq(redisValidContents), eq(contentId))).willReturn(false);
+        given(contentRepository.existsById(eq(contentId))).willReturn(false);
+
+        //  when & then
+        assertThatThrownBy(()->contentService.addLike(contentId, memberDto))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e->((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.CONTENT_NOT_FOUND);
+
+        verify(setOperations, times(1)).isMember(eq(redisValidContents), eq(contentId));
+        verify(contentRepository, times(1)).existsById(eq(contentId));
+
+    }
+
+    @Test
+    @DisplayName("좋아요_실패_좋아요_중복")
+    void 좋아요_실패_좋아요_중복 () {
+
+        // 파라미터 및 테스트 데이터 세팅
+        Long contentId = 100L; // (구분을 위해 1L 대신 100L 사용)
+        Long memberId = 1L;
+
         MemberDto memberDto = MemberDto.builder().id(memberId).build();
 
         Member member = Member.builder().build();
         ReflectionTestUtils.setField(member, "id", memberDto.getId());
 
-        Content content = Content.builder().build();
-        ReflectionTestUtils.setField(content, "id", contentId);
+        String today = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
 
-        //  given
-        //  회원 및 글
-        given(contentRepository.findById(contentId)).willReturn(Optional.of(content));
-        given(memberRepository.findById(memberDto.getId())).willReturn(Optional.of(member));
+        // Redis의 키
+        String redisValidContents = RedisKey.VALID_CONTENTS.makeKey();
+        String redisLikeContentUsers = RedisKey.LIKE_CONTENT_USERS.makeKey(contentId);
 
-        //  좋아요 사용
-        String expectedUserLikeKey = RedisKey.LIKE_CONTENT_USERS.makeKey(contentId);
+        //  given (Mocking)
+
+        // Redis 처리 반환
         given(redisTemplate.opsForSet()).willReturn(setOperations);
-        given(setOperations.add(expectedUserLikeKey, member.getId())).willReturn(0L);
 
-        //  when
-        assertThatThrownBy(() -> contentService.addLike(contentId, memberDto))
+        // 로직 반환 처리
+        given(setOperations.isMember(eq(redisValidContents), eq(contentId))).willReturn(true);
+        given(setOperations.add(eq(redisLikeContentUsers), eq(memberDto.getId()))).willReturn(0L);
+
+        // when & then
+        assertThatThrownBy(()->contentService.addLike(contentId, memberDto))
                 .isInstanceOf(BusinessException.class)
-                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .extracting(e->((BusinessException) e).getErrorCode())
                 .isEqualTo(ErrorCode.ALREADY_LIKED);
 
-        //  then
-        verify(contentRepository, times(1)).findById(contentId);
-        verify(memberRepository, times(1)).findById(memberId);
-        verify(contentLikeRepository, times(0)).save(any());
-        verify(valueOperations, times(0)).increment(any());
-        verify(setOperations, times(1)).add(any(), any());
-        verify(zSetOperations, times(0)).incrementScore(any(), any(), eq(1));
+        verify(setOperations, times(1)).isMember(eq(redisValidContents), eq(contentId));
+        verify(setOperations, times(1)).add(eq(redisLikeContentUsers), eq(memberDto.getId()));
 
     }
 
     @Test
-    @DisplayName("좋아요_취소_성공")
-    void 좋아요_취소_성공 () {
+    @DisplayName("좋아요_취소_성공 캐시 히트")
+    void 좋아요_취소_성공_캐시_히트 () {
 
-        //  테스트 데이터 세팅
-        Long contentId = 100L;
+        // 파라미터 및 테스트 데이터 세팅
+        Long contentId = 100L; // (구분을 위해 1L 대신 100L 사용)
         Long memberId = 1L;
+        double delta = -1;
 
-        MemberDto memberDto = MemberDto.builder().build();
-        ReflectionTestUtils.setField(memberDto, "id", memberId);
+        MemberDto memberDto = MemberDto.builder().id(memberId).build();
 
-        //  회원 및 글 객체, Redis 키 생성
-        Content content = Content.builder().build();
-        ReflectionTestUtils.setField(content, "id", contentId);
+        String today = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
 
-        Member member = Member.builder().build();
-        ReflectionTestUtils.setField(member, "id", memberId);
+        // Redis의 키
+        String redisValidContents = RedisKey.VALID_CONTENTS.makeKey();
+        String redisLikeContentUsers = RedisKey.LIKE_CONTENT_USERS.makeKey(contentId);
+        String redisLikeContentUsersRemoveQueue = RedisKey.LIKE_CONTENT_USERS_REMOVE_QUEUE.makeKey(contentId);
+        String redisLikeContentCount = RedisKey.LIKE_CONTENT_COUNT.makeKey(contentId);
+        String redisLikeDailyRankingCount = RedisKey.LIKE_DAILY_RANKING_COUNT.makeKey(today);
+        String redisLikeUpdatedContents = RedisKey.LIKE_UPDATED_CONTENTS.makeKey();
 
-        String userLikeKey = RedisKey.LIKE_CONTENT_USERS.makeKey(contentId);
 
-        //  given
-        given(contentRepository.findById(contentId)).willReturn(Optional.of(content));
-        given(memberRepository.findById(memberId)).willReturn(Optional.of(member));
-        given(redisTemplate.opsForSet()).willReturn(setOperations);
-        given(setOperations.remove(userLikeKey, member.getId())).willReturn(1L);
+        //  given (Mocking)
+
+        // Redis 처리 반환
         given(redisTemplate.opsForValue()).willReturn(valueOperations);
+        given(redisTemplate.opsForSet()).willReturn(setOperations);
         given(redisTemplate.opsForZSet()).willReturn(zSetOperations);
+        given(redisTemplate.opsForList()).willReturn(listOperations);
+
+        // 로직 반환 처리
+        given(setOperations.isMember(eq(redisValidContents), eq(contentId))).willReturn(true);
+        given(setOperations.remove(eq(redisLikeContentUsers), eq(memberDto.getId()))).willReturn(1L);
 
         //  when
         contentService.removeLike(contentId, memberDto);
 
-        //  then
-        
-        // 글, 회원, Redis 값 불러오기
-        verify(contentRepository, times(1)).findById(contentId);
-        verify(memberRepository, times(1)).findById(memberId);
-        verify(setOperations, times(1)).remove(userLikeKey, member.getId());
-
-        // DB 저장
-        ArgumentCaptor<Content> contentArgumentCaptor = ArgumentCaptor.forClass(Content.class);
-        ArgumentCaptor<Member> memberArgumentCaptor = ArgumentCaptor.forClass(Member.class);
-
-        verify(contentLikeRepository, times(1)).deleteByContentAndMember(contentArgumentCaptor.capture(), memberArgumentCaptor.capture());
-
-        Content capturedContent = contentArgumentCaptor.getValue();
-        assertThat(capturedContent.getId()).isEqualTo(contentId);
-
-        Member capturedMember = memberArgumentCaptor.getValue();
-        assertThat(capturedMember.getId()).isEqualTo(memberId);
-
-        //  Redis 카운트 감소
-        ArgumentCaptor<String> countKeyArgumentCaptor = ArgumentCaptor.forClass(String.class);
-        String countKey = RedisKey.LIKE_CONTENT_COUNT.makeKey(contentId);
-        verify(valueOperations, times(1)).decrement(countKeyArgumentCaptor.capture());
-        assertThat(countKeyArgumentCaptor.getValue()).isEqualTo(countKey);
-        verify(zSetOperations, times(1)).incrementScore(RedisKey.LIKE_DAILY_RANKING_COUNT.makeKey(LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"))), contentId, -1);
-        verify(setOperations, times(1)).add(RedisKey.LIKE_UPDATED_CONTENTS.getPattern(), contentId);
+        // when
+        verify(setOperations, times(1)).isMember(eq(redisValidContents), eq(contentId));
+        verify(setOperations, times(1)).remove(eq(redisLikeContentUsers), eq(memberDto.getId()));
+        verify(listOperations, times(1)).rightPush(eq(redisLikeContentUsersRemoveQueue), eq(memberDto.getId()));
+        verify(valueOperations, times(1)).decrement(eq(redisLikeContentCount));
+        verify(zSetOperations, times(1)).incrementScore(eq(redisLikeDailyRankingCount), eq(contentId), eq(delta));
+        verify(setOperations, times(1)).add(eq(redisLikeUpdatedContents), eq(contentId));
 
     }
 
     @Test
-    @DisplayName("좋아요_취소_실패_미존재")
-    void 좋아요_취소_실패_미존재 () {
+    @DisplayName("좋아요_취소_성공 캐시 미스 DB 조회")
+    void 좋아요_취소_성공_캐시_미스_DB_조회 () {
 
-        //  테스트 데이터 세팅
-        Long contentId = 100L;
+        // 파라미터 및 테스트 데이터 세팅
+        Long contentId = 100L; // (구분을 위해 1L 대신 100L 사용)
         Long memberId = 1L;
+        double delta = -1;
 
-        // 상수
-
-        //  회원 및 글 객체 세팅
         MemberDto memberDto = MemberDto.builder().id(memberId).build();
 
-        Member member = Member.builder().build();
-        ReflectionTestUtils.setField(member, "id", memberDto.getId());
+        String today = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
 
-        Content content = Content.builder().build();
-        ReflectionTestUtils.setField(content, "id", contentId);
+        // Redis의 키
+        String redisValidContents = RedisKey.VALID_CONTENTS.makeKey();
+        String redisLikeContentUsers = RedisKey.LIKE_CONTENT_USERS.makeKey(contentId);
+        String redisLikeContentUsersRemoveQueue = RedisKey.LIKE_CONTENT_USERS_REMOVE_QUEUE.makeKey(contentId);
+        String redisLikeContentCount = RedisKey.LIKE_CONTENT_COUNT.makeKey(contentId);
+        String redisLikeDailyRankingCount = RedisKey.LIKE_DAILY_RANKING_COUNT.makeKey(today);
+        String redisLikeUpdatedContents = RedisKey.LIKE_UPDATED_CONTENTS.makeKey();
+
+
+        //  given (Mocking)
+
+        // Redis 처리 반환
+        given(redisTemplate.opsForValue()).willReturn(valueOperations);
+        given(redisTemplate.opsForSet()).willReturn(setOperations);
+        given(redisTemplate.opsForZSet()).willReturn(zSetOperations);
+        given(redisTemplate.opsForList()).willReturn(listOperations);
+
+        // 로직 반환 처리
+        given(setOperations.isMember(eq(redisValidContents), eq(contentId))).willReturn(false);
+        given(contentRepository.existsById(eq(contentId))).willReturn(true);
+        given(setOperations.remove(eq(redisLikeContentUsers), eq(memberDto.getId()))).willReturn(1L);
+
+        //  when
+        contentService.removeLike(contentId, memberDto);
+
+        // when
+        verify(setOperations, times(1)).isMember(eq(redisValidContents), eq(contentId));
+        verify(contentRepository, times(1)).existsById(eq(contentId));
+        verify(setOperations, times(1)).add(eq(redisValidContents), eq(contentId));
+        verify(setOperations, times(1)).remove(eq(redisLikeContentUsers), eq(memberDto.getId()));
+        verify(listOperations, times(1)).rightPush(eq(redisLikeContentUsersRemoveQueue), eq(memberDto.getId()));
+        verify(valueOperations, times(1)).decrement(eq(redisLikeContentCount));
+        verify(zSetOperations, times(1)).incrementScore(eq(redisLikeDailyRankingCount), eq(contentId), eq(delta));
+        verify(setOperations, times(1)).add(eq(redisLikeUpdatedContents), eq(contentId));
+
+    }
+
+    @Test
+    @DisplayName("좋아요_취소_실패_글_미존재")
+    void 좋아요_취소_실패_글_미존재 () {
+
+        // 파라미터 및 테스트 데이터 세팅
+        Long contentId = 100L; // (구분을 위해 1L 대신 100L 사용)
+        Long memberId = 1L;
+
+        MemberDto memberDto = MemberDto.builder().id(memberId).build();
+
+        // Redis 키
+        String redisValidContents = RedisKey.VALID_CONTENTS.makeKey();
 
         //  given
-        //  글 및 회원 조회
-        given(contentRepository.findById(contentId)).willReturn(Optional.of(content));
-        given(memberRepository.findById(memberDto.getId())).willReturn(Optional.of(member));
-
-        //  redis 조회
-        String userLikeKey = RedisKey.LIKE_CONTENT_USERS.makeKey(contentId);
+        //  Reids 처리 반환
         given(redisTemplate.opsForSet()).willReturn(setOperations);
-        given(setOperations.remove(userLikeKey, member.getId())).willReturn(0L);
+
+        //  로직 처리 반환
+        given(setOperations.isMember(eq(redisValidContents), eq(contentId))).willReturn(false);
+        given(contentRepository.existsById(eq(contentId))).willReturn(false);
 
         //  when & then
-        assertThatThrownBy(() -> contentService.removeLike(contentId, memberDto))
+        assertThatThrownBy(()->contentService.removeLike(contentId, memberDto))
                 .isInstanceOf(BusinessException.class)
-                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .extracting(e->((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.CONTENT_NOT_FOUND);
+
+        verify(setOperations, times(1)).isMember(eq(redisValidContents), eq(contentId));
+        verify(contentRepository, times(1)).existsById(eq(contentId));
+
+    }
+
+    @Test
+    @DisplayName("좋아요_실패_좋아요_미존재")
+    void 좋아요_실패_좋아요_미존재 () {
+
+        // 파라미터 및 테스트 데이터 세팅
+        Long contentId = 100L; // (구분을 위해 1L 대신 100L 사용)
+        Long memberId = 1L;
+
+        MemberDto memberDto = MemberDto.builder().id(memberId).build();
+
+        // Redis의 키
+        String redisValidContents = RedisKey.VALID_CONTENTS.makeKey();
+        String redisLikeContentUsers = RedisKey.LIKE_CONTENT_USERS.makeKey(contentId);
+
+        //  given (Mocking)
+
+        // Redis 처리 반환
+        given(redisTemplate.opsForSet()).willReturn(setOperations);
+
+        // 로직 반환 처리
+        given(setOperations.isMember(eq(redisValidContents), eq(contentId))).willReturn(true);
+        given(setOperations.remove(eq(redisLikeContentUsers), eq(memberDto.getId()))).willReturn(0L);
+
+        // when & then
+        assertThatThrownBy(()->contentService.removeLike(contentId, memberDto))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e->((BusinessException) e).getErrorCode())
                 .isEqualTo(ErrorCode.LIKE_NOT_FOUND);
 
-        //  처리 되는것
-        verify(contentRepository, times(1)).findById(contentId);
-        verify(memberRepository, times(1)).findById(memberId);
-        verify(setOperations).remove(userLikeKey, member.getId());
-
-        //  처리 안되는것
-        verify(contentLikeRepository, times(0)).deleteByContentAndMember(any(), any());
-        verify(valueOperations, times(0)).decrement(any());
-        verify(zSetOperations, times(0)).incrementScore(any(), any(), eq(-1));
-        verify(setOperations, times(0)).add(any(), any());
+        verify(setOperations, times(1)).isMember(eq(redisValidContents), eq(contentId));
+        verify(setOperations, times(1)).remove(eq(redisLikeContentUsers), eq(memberDto.getId()));
 
     }
 
