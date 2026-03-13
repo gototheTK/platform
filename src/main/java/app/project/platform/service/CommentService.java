@@ -21,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -36,6 +37,7 @@ public class CommentService {
 
     private final RedisTemplate<String, Object> redisTemplate;
 
+    //  댓글 작성
     @Transactional
     public CommentResponseDto create(
             CommentRequestDto commentRequestDto,
@@ -61,7 +63,13 @@ public class CommentService {
                 .parent(parent)
                 .build();
 
-        return CommentResponseDto.from(commentRepository.save(comment));
+        CommentResponseDto commentResponseDto = CommentResponseDto.from(commentRepository.save(comment));
+
+        // 좋아요 성능을 위해 댓글 번호 Redis에 등록
+        String redisValidComments = RedisKey.VALID_COMMENTS.makeKey();
+        redisTemplate.opsForSet().add(redisValidComments, commentResponseDto.getId());
+
+        return commentResponseDto;
 
     }
 
@@ -98,43 +106,55 @@ public class CommentService {
         }
 
         commentRepository.delete(comment);
+
+        // 댓글 삭제시 Redis 캐시에서 글번호 삭제 (없는 댓글에 좋아요를 방지하기 위해서)
+        String redisValidComment = RedisKey.VALID_COMMENTS.makeKey();
+        redisTemplate.opsForSet().remove(redisValidComment, comment.getId());
+
     }
 
     @Transactional
     public Long addLike(Long commentId, MemberDto memberDto) {
 
-        // Redis 패턴
+        // 댓글 조회
+        String redisValidComments = RedisKey.VALID_COMMENTS.makeKey();
+        Boolean isValidComment = redisTemplate.opsForSet().isMember(redisValidComments, commentId);
 
-        // 댓글과 회원 조회
-        Comment comment = commentRepository.findById(commentId).orElseThrow(() -> new BusinessException(ErrorCode.CONTENT_NOT_FOUND));
+        // Look-Aside 패턴 적용
+        if (Boolean.FALSE.equals(isValidComment)) {
+
+             boolean isComment = commentRepository.existsById(commentId);
+
+             if (!isComment) throw  new BusinessException(ErrorCode.COMMENT_NOT_FOUND);
+
+             redisTemplate.opsForSet().add(redisValidComments, commentId);
+        }
+
+        // 회원 조회
         Member member = memberRepository.getReferenceById(memberDto.getId());
 
         // Redis Set 사용
-        String userLikeKey = RedisKey.LIKE_COMMENT_USERS.makeKey(commentId);
-
+        String redisLikeCommentUsersSet = RedisKey.LIKE_COMMENT_USERS_SET.makeKey(commentId);
+        
         // Redis Set에 유저 ID 추가 시도
         // add() 결과 값 : 1 = 새로 추가됨(성공), 0 = 이미 있음(중복)
-        Long isAdded = redisTemplate.opsForSet().add(userLikeKey, member.getId());
+        Long isAdded = redisTemplate.opsForSet().add(redisLikeCommentUsersSet, member.getId());
 
         if (isAdded != null && isAdded == 0) {
             throw new BusinessException(ErrorCode.ALREADY_LIKED);
         }
 
-        // DB 저장 (영속성 유지를 위해 DB에도 저장을 한다)
-        CommentLike commentLike = CommentLike.builder()
-                .comment(comment)
-                .member(member)
-                .build();
-        CommentLike savedCommentLike = commentLikeRepository.save(commentLike);
+        String redisLikeCommentUsersQueue = RedisKey.LIKE_COMMENT_USERS_QUEUE.makeKey(commentId);
 
-        // Redis 카운트 증가 (기본 로직 유지)
+        // Redis 카운트 증가 (기본 로직 유지) 및 유저 추가
         String countKey = RedisKey.LIKE_COMMENT_COUNT.makeKey(commentId);
-        redisTemplate.opsForValue().increment(countKey);
+        Long currentCount =  redisTemplate.opsForValue().increment(countKey);
+        redisTemplate.opsForList().rightPush(redisLikeCommentUsersQueue, member.getId());
 
         // 커멘트 좋아요 카운트 더티 체킹
-        redisTemplate.opsForSet().add(RedisKey.LIKE_UPDATED_COMMENTS.getPattern(), commentId);
+        redisTemplate.opsForSet().add(RedisKey.LIKE_UPDATED_COMMENTS.makeKey(), commentId);
 
-        return savedCommentLike.getId();
+        return currentCount;
 
     }
 
@@ -142,28 +162,39 @@ public class CommentService {
     public void removeLike(Long commentId, MemberDto memberDto) {
 
         //  댓글과 회원 조회
-        Comment comment = commentRepository.findById(commentId).orElseThrow(() -> new BusinessException(ErrorCode.CONTENT_NOT_FOUND));
-        Member member = memberRepository.findById(memberDto.getId()).orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+        String redisValidComments = RedisKey.VALID_COMMENTS.makeKey();
+        Boolean isValidComment = redisTemplate.opsForSet().isMember(redisValidComments, commentId);
+
+        // Look-Aside 구조
+        if (Boolean.FALSE.equals(isValidComment)) {
+            boolean isComment = commentRepository.existsById(commentId);
+            if (!isComment) throw new BusinessException(ErrorCode.COMMENT_NOT_FOUND);
+            // 롤백되면 바로 캐시 히트될 수 있게 저장
+            redisTemplate.opsForSet().add(redisValidComments, commentId);
+        }
+
+        Member member = memberRepository.getReferenceById(memberDto.getId());
 
         //  Redis Set 사용
-        String userLikeKey = RedisKey.LIKE_COMMENT_USERS.makeKey(commentId);
+        String redisCommentUserSet = RedisKey.LIKE_COMMENT_USERS_SET.makeKey(commentId);
 
-        //  Redis Set에 유저 Id 추가 시도
         //  remove() 결과 값 : 1 = 삭제, 0 = 없음
-        Long isRemoved = redisTemplate.opsForSet().remove(userLikeKey, member.getId());
+        Long isRemoved = redisTemplate.opsForSet().remove(redisCommentUserSet, member.getId());
 
         if (isRemoved != null && isRemoved == 0) {
             throw new BusinessException(ErrorCode.LIKE_NOT_FOUND);
         }
 
-        commentLikeRepository.deleteByCommentAndMember(comment, member);
+        // 비동기 DB 삭제를 위한 삭제 대기열(Remove Queue) 추가
+        String redisLikeCommentUsersRemoveQueue = RedisKey.LIKE_COMMENT_USERS_REMOVE_QUEUE.makeKey(commentId);
+        redisTemplate.opsForList().rightPush(redisLikeCommentUsersRemoveQueue, member.getId());
 
         //  Redis 카운트 감소 (기본 로직 유지)
-        String countLikeKey = RedisKey.LIKE_COMMENT_COUNT.makeKey(commentId);
-        redisTemplate.opsForValue().decrement(countLikeKey);
+        String redisCountLikeKey = RedisKey.LIKE_COMMENT_COUNT.makeKey(commentId);
+        redisTemplate.opsForValue().decrement(redisCountLikeKey);
 
         //  게시글 좋아요 더티 체킹
-        redisTemplate.opsForSet().add(RedisKey.LIKE_UPDATED_COMMENTS.getPattern(), commentId);
+        redisTemplate.opsForSet().add(RedisKey.LIKE_UPDATED_COMMENTS.makeKey(), commentId);
 
     }
 

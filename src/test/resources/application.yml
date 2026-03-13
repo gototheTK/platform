@@ -20,9 +20,9 @@ spring:
    #driver-class-name: org.h2.Driver
    #username: sa
    #password:
-    url: ${SERVER_DB_URL}
-    username: ${SERVER_DB_USERNAME}
-    password: ${SERVER_DB_PASSWORD}
+    url: jdbc:mysql://localhost:3306/platform_db?rewriteBatchedStatements=true&characterEncoding=UTF-8&serverTimezone=UTC
+    username: root
+    password: root
     driver-class-name: com.mysql.cj.jdbc.Driver
 
     hikari:

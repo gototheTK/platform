@@ -33,7 +33,10 @@ public interface ContentRepository extends JpaRepository<Content, Long> {
     List<Content> findAllWithAuthorByCursor(@Param("cursor") Long cursor, Pageable pageable);
 
     @Modifying(clearAutomatically = true)   // 쿼리 실행 후 영속성 컨텍스트 비우기
-    @Query(value = "update Content c set c.likeCount = c.likeCount + :count where c.id = :id")
+    @Query(value = "update Content c set c.likeCount = c.likeCount where c.id = :id")
     void updateLikeCount(@Param("id") Long id, @Param("count") Long count);
+
+    @Query("select c from Content c where c.id in :ids")
+    List<Content> findExistingContentsById(List<Long> ids);
 
 }
