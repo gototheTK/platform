@@ -59,6 +59,9 @@ jobs:
           SERVER_DB_URL: jdbc:mysql://127.0.0.1:3306/${{ secrets.SERVER_DB_NAME }}
           SERVER_DB_USERNAME: root # services에서 MYSQL_ROOT_PASSWORD를 썼으므로 계정은 root입니다.
           SERVER_DB_PASSWORD: ${{ secrets.SERVER_DB_PASSWORD }}
+            # Redis 설정도 필요하다면 추가
+            SPRING_DATA_REDIS_HOST: localhost
+            SPRING_DATA_REDIS_PORT: 6379
         run: ./gradlew build test
 
       # 도커허브에 로그인하고, 이미지를 만들어서 올립니다.
