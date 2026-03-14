@@ -19,8 +19,8 @@ jobs:
       mysql:
         image: mysql:8.0
         env:
-          MYSQL_ROOT_PASSWORD: root # 로컬 application.yml의 비밀번호와 맞추세요
-          MYSQL_DATABASE: platform_db # 로컬 application.yml의 DB명과 맞추세요
+          MYSQL_ROOT_PASSWORD: ${{ secrets.SERVER_DB_PASSWORD }} # 로컬 application.yml의 비밀번호와 맞추세요
+          MYSQL_DATABASE: ${{ secrets.SERVER_DB_NAME }} # 로컬 application.yml의 DB명과 맞추세요
         ports:
           - 3306:3306
         options: >-
@@ -55,6 +55,10 @@ jobs:
       # 코드를 빌드하고 테스트를 돌립니다.
       # 테스트가 실패하면 여기서 중단되어 배포되지 않습니다! (안전장치)
       - name: Build 및 Test 수행
+        env:
+          SERVER_DB_URL: jdbc:mysql://127.0.0.1:3306/${{ secrets.SERVER_DB_NAME }}
+          SERVER_DB_USERNAME: root # services에서 MYSQL_ROOT_PASSWORD를 썼으므로 계정은 root입니다.
+          SERVER_DB_PASSWORD: ${{ secrets.SERVER_DB_PASSWORD }}
         run: ./gradlew build test
 
       # 도커허브에 로그인하고, 이미지를 만들어서 올립니다.
