@@ -219,52 +219,52 @@ flowchart LR
 
 ### 2026-01-23
 
-    - Problem: 글 수정 테스트시 MockMvc가 Multipart요청을 기본적으로 POST만 보내서 400/500 에러 발생.
-    - Solution : .with(req -> { req.setMethod("PUT"); return req;})를 사용하여 강제로 변경
+- Problem: 글 수정 테스트시 MockMvc가 Multipart요청을 기본적으로 POST만 보내서 400/500 에러 발생.
+- Solution : .with(req -> { req.setMethod("PUT"); return req;})를 사용하여 강제로 변경
 
-    - Insight: 생성과 수정은 요구하는 데이터가 다르므로, DTO를 분리하는것이 유지보수 관리에 유리한거같다
+- Insight: 생성과 수정은 요구하는 데이터가 다르므로, DTO를 분리하는것이 유지보수 관리에 유리한거같다
 
-    - Mistake : any()와 new ArrayList<>()를 섞어 써서 Mockito Stubbing 에러 발생 -> any()로 통일하거나 eq() 사용해야함.
+- Mistake : any()와 new ArrayList<>()를 섞어 써서 Mockito Stubbing 에러 발생 -> any()로 통일하거나 eq() 사용해야함.
 
 ### 2026-01-28
-    오늘의 학습 및 문제 해결
+오늘의 학습 및 문제 해결
 
-    1. 동시성 이슈: 좋아요 데이터 증발 (Lost Update)
-        - 문제 상황: JMeter로 100명이 동시에 좋아요를 눌렀을 때, DB에 약 50개만 저장되는 갱신 분실(Race Condition) 현상 발생
-        - 원인: 여러 스레드가 동시에 DB의 like_count 값을 읽고 수정하는 과정에서 서로의 값을 덮어씌움.
+1. 동시성 이슈: 좋아요 데이터 증발 (Lost Update)
+    - 문제 상황: JMeter로 100명이 동시에 좋아요를 눌렀을 때, DB에 약 50개만 저장되는 갱신 분실(Race Condition) 현상 발생
+    - 원인: 여러 스레드가 동시에 DB의 like_count 값을 읽고 수정하는 과정에서 서로의 값을 덮어씌움.
 
-    2. 해결 과정
-        - 시도1 : 비관적 락(Pessimistic Lock)
-            - 방법: DB 레벨에서 SELECT ... FOR UPDATE로 행을 잠금.
-            - 결과: 데이터 정합성은 100% 해결되었으니, 모든 요청이 줄을 서서 처리되므로 응답 속도가 심각하게 저하됨(DB 병목)
+2. 해결 과정
+    - 시도1 : 비관적 락(Pessimistic Lock)
+        - 방법: DB 레벨에서 SELECT ... FOR UPDATE로 행을 잠금.
+        - 결과: 데이터 정합성은 100% 해결되었으니, 모든 요청이 줄을 서서 처리되므로 응답 속도가 심각하게 저하됨(DB 병목)
 
-        - 시도2: Redis Write-Back(최정 적용)
-            - 방법: Redis의 Atomic Operation (INCR)을 사용하여 메모리에서 카운팅 후, 스케줄러가 DB에 일괄 반영.
-            - 결과:
-                - 정합성: Redis의 싱글 스레드 특성으로 동시성 문제 해결.
-                - 성능: DB 업데이트 쿼리 수를 N번 -> 1번으로 감소시켜 처리량(Throughput) 극대화.
-
-    3. 결과
-        - 시나리오: JMeter로 사용자 100명이 1초내에 동시 가입 및 접속, 좋아요 클릭
+    - 시도2: Redis Write-Back(최정 적용)
+        - 방법: Redis의 Atomic Operation (INCR)을 사용하여 메모리에서 카운팅 후, 스케줄러가 DB에 일괄 반영.
         - 결과:
-                - 데이터 유실률 0% 달성
-                - Redis키에 누적되고, 스케줄러 실행 후 DB로 이관되는걸 확인
+            - 정합성: Redis의 싱글 스레드 특성으로 동시성 문제 해결.
+            - 성능: DB 업데이트 쿼리 수를 N번 -> 1번으로 감소시켜 처리량(Throughput) 극대화.
+
+3. 결과
+    - 시나리오: JMeter로 사용자 100명이 1초내에 동시 가입 및 접속, 좋아요 클릭
+    - 결과:
+            - 데이터 유실률 0% 달성
+            - Redis키에 누적되고, 스케줄러 실행 후 DB로 이관되는걸 확인
 
 ### 2026-01-29
-    오늘의 학습 및 문제 해결
+오늘의 학습 및 문제 해결
 
-    1. 조회 성능 개선 (NoSQL Caching): 중복 좋아요 체크 로직을 DB 조회(existsBy)에서 Redis Set 연산으로 대체하여 병목 저게.
-    2. 확장성 설계 (Key Naming): 게시글(Content)와 댓글(Comment)의 키 충돌 방지를 위한 네임스페이스 설계 적용.
+1. 조회 성능 개선 (NoSQL Caching): 중복 좋아요 체크 로직을 DB 조회(existsBy)에서 Redis Set 연산으로 대체하여 병목 저게.
+2. 확장성 설계 (Key Naming): 게시글(Content)와 댓글(Comment)의 키 충돌 방지를 위한 네임스페이스 설계 적용.
 
 ### 2026-02-01
-    오늘의 학습 및 문제해결
-    
-    1. 랭킹순위 조회 구현
+오늘의 학습 및 문제해결
+
+1. 랭킹순위 조회 구현
 
 ### 2026-02-02
-    오늘의 학습 및 문제해결
+오늘의 학습 및 문제해결
 
-    1. 랭킹순위 조회 테스트 코드 작성 및 성공
+1. 랭킹순위 조회 테스트 코드 작성 및 성공
 
 ### 2026-02-5
 오늘의 학습 및 움제해결
@@ -303,44 +303,44 @@ flowchart LR
 
 ### 학습
 
-  - Hiberanate는 JPA를 인스턴스화한 프레임워크이다. 즉, 실제 영속성 컨텍스트와 더티 체크를하여 실제 DB에 반영하는 실제 JPA의 인스턴스 객체이다.
-    그리고 HikariCP는 실제 DB와 커넥션풀을 제공하는 프레임워크이다. 왜 HikariCP를 사용하냐면, 코드로 일일히 DB로 TCP/IP연결하여 3-Hand Shaking을 하기에는 처리가 너무 무겁고, 느리기 때문이다.
-    그리하여 프로세스가 종료 될 떄까지 TCP/IP연결을 계속 유지하는 커넥션풀을 유지하여 필요할 때마다 사용하는 커넥션 풀이 등장하게 되었고, 그것이바로 HikariCP이다. 
+- Hiberanate는 JPA를 인스턴스화한 프레임워크이다. 즉, 실제 영속성 컨텍스트와 더티 체크를하여 실제 DB에 반영하는 실제 JPA의 인스턴스 객체이다.
+  그리고 HikariCP는 실제 DB와 커넥션풀을 제공하는 프레임워크이다. 왜 HikariCP를 사용하냐면, 코드로 일일히 DB로 TCP/IP연결하여 3-Hand Shaking을 하기에는 처리가 너무 무겁고, 느리기 때문이다.
+  그리하여 프로세스가 종료 될 떄까지 TCP/IP연결을 계속 유지하는 커넥션풀을 유지하여 필요할 때마다 사용하는 커넥션 풀이 등장하게 되었고, 그것이바로 HikariCP이다. 
 
-  - 그런데 스프링부트에서 HikariCP의 스레드의 개수는 기본적으로 10개이고, 부족하다고 성능을 고려하지 않고 함부러 늘려버리면 웹서버에서는 OOM현상이 일어나거나 DB서버에서는 문맥교환만하는 스래싱현상이 일어날 것이다. 그래서 우선 로직상 DB를 통한 조회를 최소화 하는 방법을 도입힌다.그것은 다음과 같다.
+- 그런데 스프링부트에서 HikariCP의 스레드의 개수는 기본적으로 10개이고, 부족하다고 성능을 고려하지 않고 함부러 늘려버리면 웹서버에서는 OOM현상이 일어나거나 DB서버에서는 문맥교환만하는 스래싱현상이 일어날 것이다. 그래서 우선 로직상 DB를 통한 조회를 최소화 하는 방법을 도입힌다.그것은 다음과 같다.
 
-  1. service단의 ContentService나 CommentService 기본로직에서 DB로 SELECT처리를 최소화하여야 한다.
-  2. Security에서의 JWT이든 Session이든 회원을 검증하기 때문에, service단에서 DB를 통해 회원을 조회하여 검증할 필요는 없다. 그러니 회원조회 코드는 과감하게 삭제한다.
-  3. 추천시 Content식별을 위한 DB 조회는 Redis를 통해 캐싱 전략을 사용하는데 방법은 다음과 같다. A를 먼저 적용해보고, B를 적용해보겠다.
+1. service단의 ContentService나 CommentService 기본로직에서 DB로 SELECT처리를 최소화하여야 한다.
+2. Security에서의 JWT이든 Session이든 회원을 검증하기 때문에, service단에서 DB를 통해 회원을 조회하여 검증할 필요는 없다. 그러니 회원조회 코드는 과감하게 삭제한다.
+3. 추천시 Content식별을 위한 DB 조회는 Redis를 통해 캐싱 전략을 사용하는데 방법은 다음과 같다. A를 먼저 적용해보고, B를 적용해보겠다.
     
-     > - A: 글을 저장이나 조회시 Redis의 특정한 Set에 ContentId를 저장해두고, API 호출시에 Set에서 해등 ContentId, CommentId가 있는지 조회한다.
+     >- A: 글을 저장이나 조회시 Redis의 특정한 Set에 ContentId를 저장해두고, API 호출시에 Set에서 해등 ContentId, CommentId가 있는지 조회한다.
      >   - 결과:
      >       - H2를 DB로두고, 톰캣 스레드를 100개로 가정하고, 10000개의 요청 시 : 성공 9초 672ms
      >       - H2를 DB로두고, 톰캣 스레드를 100개로 가정하고, 50000개의 요청 시 : 성공 27초 242ms (메모리 늘리고 테스트)
 
-      > - B: Write-Back 패턴을 이용하는데, API가 호출되면 Redis의 Set에 수정된 ContentId나 CommentId를 더티체크한다. 그리고 스케줄러로 정해진 시간마다 더티체크를 확인하여 갱신한다. 가장 많이 쓰이는 방식이라고 한다.
+      >- B: Write-Back 패턴을 이용하는데, API가 호출되면 Redis의 Set에 수정된 ContentId나 CommentId를 더티체크한다. 그리고 스케줄러로 정해진 시간마다 더티체크를 확인하여 갱신한다. 가장 많이 쓰이는 방식이라고 한다.
       >  - 결과:
             - MySql을 DB로 두고, 톰캣 스레드를 100개로 가정하고, 50000개의 요청 시 : 성공 24초 626ms (메모리 늘리고 테스트)
 
-  - 참고로, 톰캣의 스레드풀이 스프링의 로직을 돌리는 시간에 비해, HikariCP같은 DB 파이프를 통해 쿼리를 쏘고 결과를 받아오는 시간은 보통 수 밀리초(ms) 단위로 찰나의 순간이다. 그래서 커넥션 스레드의 수가 10개 뿐이더라도, 워낙 눈 깜짝할 새에 쓰고 반갑하기 때문에 톰캣 200개의 스레드가 금방 처리 될 수있다.
-  그래서 커넥션 풀의 수를 함부러 늘리지 말고, 로직을 최대한 최적화하고, 그 후에 Jmeter같은 부하테스트 도구로 5만 건 이상의 트래픽을 쏴보고, HikariCP의 대기 시간이나 DB서버의 CPU사용률을 모니터링하면서 조율하는것을 권장한다고 한다.
-  HikariCP를 만든 제작자와 PostgresSQL 공식 문서에서 권장하는 최적의 커넥션 풀 사이즈 공식은 다음과 같다.
+- 참고로, 톰캣의 스레드풀이 스프링의 로직을 돌리는 시간에 비해, HikariCP같은 DB 파이프를 통해 쿼리를 쏘고 결과를 받아오는 시간은 보통 수 밀리초(ms) 단위로 찰나의 순간이다. 그래서 커넥션 스레드의 수가 10개 뿐이더라도, 워낙 눈 깜짝할 새에 쓰고 반갑하기 때문에 톰캣 200개의 스레드가 금방 처리 될 수있다.
+그래서 커넥션 풀의 수를 함부러 늘리지 말고, 로직을 최대한 최적화하고, 그 후에 Jmeter같은 부하테스트 도구로 5만 건 이상의 트래픽을 쏴보고, HikariCP의 대기 시간이나 DB서버의 CPU사용률을 모니터링하면서 조율하는것을 권장한다고 한다.
+HikariCP를 만든 제작자와 PostgresSQL 공식 문서에서 권장하는 최적의 커넥션 풀 사이즈 공식은 다음과 같다.
 
-    > Ideal Connection Pool size = (DB 서버의 CPU 코어 수 * 2) + 유요한 디스크 수
+    >  Ideal Connection Pool size = (DB 서버의 CPU 코어 수 * 2) + 유요한 디스크 수
     
-    - 코어 수 * 2: CPU 코어가 쉬지 않고 일할 수 있도록 약간의 여유를 두는 정도
-    - 유효한 디스크 수: 하드디스크(HDD)시절에는 디스크 헤드가 돌아가는 대기 시간이 있어서 숫자를 더했지만, 요즘 같은 SSD 환경에서는 보통 '1'로 계산한다고 한다.
+- 코어 수 * 2: CPU 코어가 쉬지 않고 일할 수 있도록 약간의 여유를 두는 정도
+- 유효한 디스크 수: 하드디스크(HDD)시절에는 디스크 헤드가 돌아가는 대기 시간이 있어서 숫자를 더했지만, 요즘 같은 SSD 환경에서는 보통 '1'로 계산한다고 한다.
 
-  - JPA를 쓸때는 <code>save()</code>를 <cdoe>for</code>문 안에서 돌리는 것은 대용량 처리에서 절대 피해야 할 안티 패턴이다.
-  - JPA의 <code>saveAll()</code>사용 시 주의할것이 있다. 만약 MySQL을 사용하는데 IDENTITY전략을 사용한다면, Hibernate는 이 IDENTITY 전략을 사용할 때, 다중 삽입(Batch Insert)기능을 강제로 꺼버린다. 왜냐하면, MySQL의
-    IDENTITY는 INSERT 쿼리를 때려봐야 DB가 생성해 준 ID값을 알 수 있기때문이다. JPA는 엔티티를 그 객체의 ID를 가지고 식별한다. 결국에는 <code>saveAll()</code>로 1만개를 한 번에 묶어서(Batch) 보내고 싶어도, 당장 1개씩 DB에 밀어넣고 ID를 받아와야하는 N+1문제가 생기게된다.
-    또한, <code>saveAll()</code>를 사용하면 1차 캐시인 영속성 컨텍스트에 데이터를 차곡차곡 쌓아두기때문에, 1만개의 데이터를 저장한다치면 OOM(Out of Memory)현상이 일어날 수 있다.
-    그러니 IDENTITY전략을 사용하는 MySQL이나 MariaDB를 사용할 때는, <code>saveAll()</code> 대신에 MyBatis나 <code>JdbcTemplate.batchUpdate()</code>를 사용하도록한다.
-  - Oracle이나 PostgreSql Sequence라는 객체를 지원하여 DB로부터 미리 쓸 ID를 가져와서 저장해 놓다가, 필요하면 ID를 부여하는 선 발급, 후 적용을 지원한다. 그러니 <code>saveAll()</code>을 사용하여도 무방하다.
-  - RDS의 max_connections의 값은 <code>(최대 동시 접속 사용자 수) + (시스템 여유분)</code>가 바람직하며, 학습용/테스트용 프리티어라면 150~300사이로 설정한다.
-    5만 건 적재 테스트 시 스레드 풀을 크게 잡았다면, HikariCP의 <code>maximum-pool-size</code>보다 20~30% 더 넉넉하게 설정해야 안전하다.
-  - HikariCP의 커넥션 수만 늘린다고 되는게 아니라, DB의 커넥션이 오랫동안 점유되지 않도록 wait_timeout이나 interactive_timeout을 적절히 줄여줘야 오랫동안 점유되지 않고 커넥션을 회수할 수 있다.
-    실시간 커넥션 사용 확인 쿼리: <code>SHOW STATUS LIKE 'Threads_connected';</code>
+- JPA를 쓸때는 <code>save()</code>를 <cdoe>for</code>문 안에서 돌리는 것은 대용량 처리에서 절대 피해야 할 안티 패턴이다.
+- JPA의 <code>saveAll()</code>사용 시 주의할것이 있다. 만약 MySQL을 사용하는데 IDENTITY전략을 사용한다면, Hibernate는 이 IDENTITY 전략을 사용할 때, 다중 삽입(Batch Insert)기능을 강제로 꺼버린다. 왜냐하면, MySQL의
+IDENTITY는 INSERT 쿼리를 때려봐야 DB가 생성해 준 ID값을 알 수 있기때문이다. JPA는 엔티티를 그 객체의 ID를 가지고 식별한다. 결국에는 <code>saveAll()</code>로 1만개를 한 번에 묶어서(Batch) 보내고 싶어도, 당장 1개씩 DB에 밀어넣고 ID를 받아와야하는 N+1문제가 생기게된다.
+또한, <code>saveAll()</code>를 사용하면 1차 캐시인 영속성 컨텍스트에 데이터를 차곡차곡 쌓아두기때문에, 1만개의 데이터를 저장한다치면 OOM(Out of Memory)현상이 일어날 수 있다.
+그러니 IDENTITY전략을 사용하는 MySQL이나 MariaDB를 사용할 때는, <code>saveAll()</code> 대신에 MyBatis나 <code>JdbcTemplate.batchUpdate()</code>를 사용하도록한다.
+- Oracle이나 PostgreSql Sequence라는 객체를 지원하여 DB로부터 미리 쓸 ID를 가져와서 저장해 놓다가, 필요하면 ID를 부여하는 선 발급, 후 적용을 지원한다. 그러니 <code>saveAll()</code>을 사용하여도 무방하다.
+- RDS의 max_connections의 값은 <code>(최대 동시 접속 사용자 수) + (시스템 여유분)</code>가 바람직하며, 학습용/테스트용 프리티어라면 150~300사이로 설정한다.
+5만 건 적재 테스트 시 스레드 풀을 크게 잡았다면, HikariCP의 <code>maximum-pool-size</code>보다 20~30% 더 넉넉하게 설정해야 안전하다.
+- HikariCP의 커넥션 수만 늘린다고 되는게 아니라, DB의 커넥션이 오랫동안 점유되지 않도록 wait_timeout이나 interactive_timeout을 적절히 줄여줘야 오랫동안 점유되지 않고 커넥션을 회수할 수 있다.
+실시간 커넥션 사용 확인 쿼리: <code>SHOW STATUS LIKE 'Threads_connected';</code>
 
 ### 작업 리스트
 
@@ -356,7 +356,10 @@ flowchart LR
   - 목표: Redis에 모인 좋아요 데이터를 RDB로 영구 저장한다.
   - 액션: 스프링의 <code>@Scheduled</code> 어노테이션을 활용해 10초에 한 번씩 실행되는 메서드를 만든다.
 
-- [x] Task 4: RDS의 DB 커넥션과 HikariCP Size를 설정
+- [x] Task 4: Db를 H2에서 RDS의 MuDSql로 바꾸기
+  - RDS인스턴스 생성 및 초기화
+
+- [x] Task 5: RDS의 DB 커넥션과 HikariCP Size를 설정
   - RDS의 max_connections값을 150, HikariCP의 maximum-pool-size값을 50으로 설정
   - RDS의 wait_timeout값을 60, interactive_timeout을 60으로 설정하여 커넥션 자원가 오랜시간 점유되지 않도록 설정
   - HikariCP의 max-lifetime값을 waite_timeout보다 30초 짧게 설정하여 '이미 끊긴 연결'을 참조하지 못하도록 방지.
