@@ -17,9 +17,9 @@ spring:
 
   datasource:
     # rewriteBatchedStatements=true가 없으면 Batch Insert가 발동하지 않는다.
-    url: ${{SERVER_DB_URL}}
-    username: ${{SERVER_DB_USERNAME}}
-    password: ${{SERVER_DB_PASSWORD}}
+    url: ${SERVER_DB_URL}
+    username: ${SERVER_DB_USERNAME}
+    password: ${SERVER_DB_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
 
     hikari:
