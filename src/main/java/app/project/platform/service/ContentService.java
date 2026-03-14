@@ -246,7 +246,7 @@ public class ContentService {
         // 글 조회 캐시
         String contentRedisKey = RedisKey.VALID_CONTENTS.makeKey();
 
-        redisTemplate.opsForSet().add(contentRedisKey, content.getId());
+        redisTemplate.opsForSet().add(contentRedisKey, savedContent.getId());
         redisTemplate.expire(contentRedisKey,
                 RedisKey.VALID_CONTENTS.getTtl(),
                 RedisKey.VALID_CONTENTS.getTimeUnit());
