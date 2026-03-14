@@ -30,8 +30,8 @@ public class DataInitializer implements CommandLineRunner {
     @Override
     public void run(String... args) throws Exception {
 
-        Integer contentCount = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM CONTENT" ,Integer.class);
-        Integer commentCount = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM COMMENT" ,Integer.class);
+        Integer contentCount = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM `content`" ,Integer.class);
+        Integer commentCount = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM `comment`" ,Integer.class);
 
         if (contentCount != null && contentCount > 0) return;
         if (commentCount != null && commentCount > 0) return;
