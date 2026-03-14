@@ -40,6 +40,9 @@ out/
 .env
 .env.local
 
+## DB
+
+mysql-data/*
 
 ### Secret Config ###
 application-secret.properties

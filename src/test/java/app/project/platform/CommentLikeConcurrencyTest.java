@@ -56,16 +56,15 @@ public class CommentLikeConcurrencyTest {
         int threadCount = 1000;
 
         //DB 세팅
-        Long recentContentId = jdbcTemplate.queryForObject("SELECT max(id) FROM content", Long.class);
+        Long contentId = jdbcTemplate.queryForObject("SELECT max(id) FROM content", Long.class);
 
         CommentRequestDto commentRequestDto = CommentRequestDto.builder()
-                .contentId(recentContentId)
+                .contentId(contentId)
                 .text("text")
                 .build();
 
         MemberDto memberDtoForComment = MemberDto.builder().id(1L).build();
         CommentResponseDto commentResponseDto = commentService.create(commentRequestDto, memberDtoForComment);
-        
 
         //  given);
         Long commentId = commentResponseDto.getId(); // 미리 DB에 생성해둔 테스트용 게시글 ID
@@ -150,6 +149,10 @@ public class CommentLikeConcurrencyTest {
 
         assertThat(likeCount).isEqualTo(threadCount);
 
+        // 수동 롤백 코드
+        jdbcTemplate.update("DELETE FROM member WHERE id >= ?", (long) start);
+        jdbcTemplate.update("DELETE FROM comment WHERE id = ?", commentId);
+
         log.debug("1000개의 동시 좋아요 요청 테스트 종료!");
 
     }
@@ -163,10 +166,10 @@ public class CommentLikeConcurrencyTest {
         int threadCount = 50000;
 
         //DB 세팅
-        Long recentContentId = jdbcTemplate.queryForObject("SELECT max(id) FROM content", Long.class);
+        Long content = jdbcTemplate.queryForObject("SELECT max(id) FROM content", Long.class);
 
         CommentRequestDto commentRequestDto = CommentRequestDto.builder()
-                .contentId(recentContentId)
+                .contentId(content)
                 .text("text")
                 .build();
 
@@ -263,6 +266,10 @@ public class CommentLikeConcurrencyTest {
         // then
         Long likeCount = redisTemplate.opsForSet().size(redisLikeCommentUserSet);
         assertThat(likeCount).isEqualTo(threadCount);
+
+        // 수동 돌백
+        jdbcTemplate.update("DELETE FROM member WHERE id >= ?", (long) start);
+        jdbcTemplate.update("DELETE FROM comment WHERE id = ?", commentId);
 
         log.debug("50000개의 동시 좋아요 요청 테스트 종료!");
 

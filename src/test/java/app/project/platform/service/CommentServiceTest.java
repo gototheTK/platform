@@ -313,7 +313,7 @@ public class CommentServiceTest {
         given(redisTemplate.opsForSet()).willReturn(setOperations);
         given(setOperations.isMember(redisValidComments, commentId)).willReturn(true);
         given(memberRepository.getReferenceById(memberDto.getId())).willReturn(member);
-        given(setOperations.add(any(), any())).willReturn(1L);
+        given(setOperations.add(eq(redisLikeCommentUserSet), eq(memberDto.getId()))).willReturn(1L);
         given(redisTemplate.opsForValue()).willReturn(valueOperations);
         given(redisTemplate.opsForList()).willReturn(listOperations);
         given(valueOperations.increment(redisLikeCommentCount)).willReturn(expectedTotalCount);
@@ -367,9 +367,9 @@ public class CommentServiceTest {
 
         given(setOperations.isMember(redisValidComments, commentId)).willReturn(false);
         given(commentRepository.existsById(commentId)).willReturn(true);
+        given(setOperations.add(eq(redisValidComments), eq(commentId))).willReturn(1L);
         given(memberRepository.getReferenceById(memberDto.getId())).willReturn(member);
-        given(setOperations.add(any(), any())).willReturn(1L);
-
+        given(setOperations.add(eq(redisLikeCommentUserSet), eq(memberDto.getId()))).willReturn(1L);
         given(valueOperations.increment(redisLikeCommentCount)).willReturn(expectedTotalCount);
 
         // when

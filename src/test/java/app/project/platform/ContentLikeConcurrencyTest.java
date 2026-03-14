@@ -2,14 +2,12 @@ package app.project.platform;
 
 import app.project.platform.domain.RedisKey;
 import app.project.platform.domain.dto.MemberDto;
-import app.project.platform.domain.dto.SignupRequestDto;
 import app.project.platform.domain.type.Role;
 import app.project.platform.entity.Member;
 import app.project.platform.repository.MemberRepository;
 import app.project.platform.service.ContentService;
 import app.project.platform.service.MemberService;
 import lombok.extern.slf4j.Slf4j;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -26,7 +24,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.in;
 
 @SpringBootTest
 @Slf4j
@@ -53,7 +50,7 @@ public class ContentLikeConcurrencyTest {
     public void concurrentAddContentLikeTest1000() throws InterruptedException {
         //  given
         int threadCount = 1000;
-        Long contentId = 1L; // 미리 DB에 생성해둔 테스트용 게시글 ID
+        Long contentId = jdbcTemplate.queryForObject("SELECT max(id) FROM content", Long.class); // 미리 DB에 생성해둔 테스트용 게시글 ID
 
         String redisLikeContentUser = RedisKey.LIKE_CONTENT_USERS.makeKey(contentId);
         String redisLikeContentUserQueue = RedisKey.LIKE_CONTENT_USERS_QUEUE.makeKey(contentId);
@@ -66,9 +63,9 @@ public class ContentLikeConcurrencyTest {
 
         //  2. 유저 1000명 미리 세팅 (CPU 병목 방지를 위해 스레드 밖에서 순차적으로 처리
 
-        Integer recentId = jdbcTemplate.queryForObject("SELECT max(id) FROM member", Integer.class);
+        Long memberId = jdbcTemplate.queryForObject("SELECT max(id) FROM member", Long.class);
 
-        int start = recentId == null ? 1 : recentId+1;
+        int start = memberId == null ? 1 : memberId.intValue() +1;
         int end = threadCount + start -1;
 
         List<Member> members = new ArrayList<>();
@@ -136,6 +133,10 @@ public class ContentLikeConcurrencyTest {
 
         assertThat(likeCount).isEqualTo(threadCount);
 
+        // 수동 롤백 코드
+        jdbcTemplate.update("DELETE FROM member WHERE id >= ?", (long) start);
+        //jdbcTemplate.update("DELETE FROM content WHERE id = ?", memberId);
+
         log.debug("1000개의 동시 좋아요 요청 테스트 종료!");
 
     }
@@ -148,7 +149,7 @@ public class ContentLikeConcurrencyTest {
 
         // given
         int threadCount = 50000;
-        Long contentId = 1L; // 미리 DB에 생성해둔 테스트용 게시글 ID
+        Long contentId = jdbcTemplate.queryForObject("SELECT max(id) FROM content", Long.class); // 미리 DB에 생성해둔 테스트용 게시글 ID
 
         String redisLikeContentUser = RedisKey.LIKE_CONTENT_USERS.makeKey(contentId);
         String redisLikeContentUserQueue = RedisKey.LIKE_CONTENT_USERS_QUEUE.makeKey(contentId);
@@ -159,8 +160,8 @@ public class ContentLikeConcurrencyTest {
         redisTemplate.delete(redisLikeContentUserQueue);
         redisTemplate.delete(redisLikeContentCount);
 
-        Integer recentId = jdbcTemplate.queryForObject("SELECT MAX(id) FROM MEMBER", Integer.class);
-        int start = recentId==null ? 1 : recentId+1;
+        Long memberId = jdbcTemplate.queryForObject("SELECT MAX(id) FROM MEMBER", Long.class);
+        int start = memberId==null ? 1 : memberId.intValue()+1;
         int end = threadCount + start -1;
 
         List<Member> members = new ArrayList<>();
@@ -237,6 +238,10 @@ public class ContentLikeConcurrencyTest {
         // then
         Long likeCount = redisTemplate.opsForSet().size(redisLikeContentUser);
         assertThat(likeCount).isEqualTo(threadCount);
+
+        // 수동 롤백 코드
+        jdbcTemplate.update("DELETE FROM member WHERE id >= ?", (long) start);
+        //jdbcTemplate.update("DELETE FROM content WHERE id = ?", contentId);
 
         log.debug("50000개의 동시 좋아요 요청 테스트 종료!");
 
