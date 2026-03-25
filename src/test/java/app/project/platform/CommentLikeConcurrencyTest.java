@@ -8,6 +8,7 @@ import app.project.platform.domain.type.Role;
 import app.project.platform.entity.Content;
 import app.project.platform.entity.Member;
 import app.project.platform.repository.MemberRepository;
+import app.project.platform.scheduler.LikeScheduler;
 import app.project.platform.service.CommentService;
 import app.project.platform.service.ContentService;
 import app.project.platform.service.MemberService;
@@ -47,6 +48,9 @@ public class CommentLikeConcurrencyTest {
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
+
+    @Autowired
+    private LikeScheduler likeScheduler;
 
     @Test
     @Tag("load-test")
@@ -143,15 +147,22 @@ public class CommentLikeConcurrencyTest {
         //  모든 스레드의 작업이 끝나서 CountDownLatch가 0이 될 때 까지 대기
         latch.await();
 
-        //  then
-        //  1. Redis에서 targetContentId의 좋아요 Set 사이즈를 조회해서 1000개인지 확인
+        // then
+        // 레디스의 좋아요 개수 확인
         Long likeCount = redisTemplate.opsForSet().size(redisLikeCommentUserSet);
+        assertThat(likeCount).isEqualTo(threadCount);
 
+        //  스케줄러 작동
+        likeScheduler.syncCommentLikeCount();
+
+        // DB의 좋아요 개수 확인
+        likeCount = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM comment_like WHERE comment_id = ?", new Long[] {commentId}, Long.class);
         assertThat(likeCount).isEqualTo(threadCount);
 
         // 수동 롤백 코드
-        jdbcTemplate.update("DELETE FROM member WHERE id >= ?", (long) start);
+        jdbcTemplate.update("DELETE FROM comment_like WHERE comment_id = ?", commentId);
         jdbcTemplate.update("DELETE FROM comment WHERE id = ?", commentId);
+        jdbcTemplate.update("DELETE FROM member WHERE id >= ?", (long) start);
 
         log.debug("1000개의 동시 좋아요 요청 테스트 종료!");
 
@@ -264,12 +275,21 @@ public class CommentLikeConcurrencyTest {
         latch.await();
 
         // then
+        // 레디스의 좋아요 개수 확인
         Long likeCount = redisTemplate.opsForSet().size(redisLikeCommentUserSet);
         assertThat(likeCount).isEqualTo(threadCount);
 
-        // 수동 돌백
-        jdbcTemplate.update("DELETE FROM member WHERE id >= ?", (long) start);
+        //  스케줄러 작동
+        likeScheduler.syncCommentLikeCount();
+
+        // DB의 좋아요 개수 확인
+        likeCount = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM comment_like WHERE comment_id = ?", new Long[] {commentId}, Long.class);
+        assertThat(likeCount).isEqualTo(threadCount);
+        
+        // 수동 롤백 코드
+        jdbcTemplate.update("DELETE FROM comment_like WHERE comment_id = ?", commentId);
         jdbcTemplate.update("DELETE FROM comment WHERE id = ?", commentId);
+        jdbcTemplate.update("DELETE FROM member WHERE id >= ?", (long) start);
 
         log.debug("50000개의 동시 좋아요 요청 테스트 종료!");
 

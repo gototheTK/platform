@@ -3,8 +3,11 @@ package app.project.platform;
 import app.project.platform.domain.RedisKey;
 import app.project.platform.domain.dto.MemberDto;
 import app.project.platform.domain.type.Role;
+import app.project.platform.entity.Content;
 import app.project.platform.entity.Member;
 import app.project.platform.repository.MemberRepository;
+import app.project.platform.scheduler.LikeScheduler;
+import app.project.platform.service.ContentLikeSyncService;
 import app.project.platform.service.ContentService;
 import app.project.platform.service.MemberService;
 import lombok.extern.slf4j.Slf4j;
@@ -43,6 +46,9 @@ public class ContentLikeConcurrencyTest {
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
+
+    @Autowired
+    private LikeScheduler likeScheduler;
 
     @Test
     @Tag("load-test")
@@ -133,9 +139,13 @@ public class ContentLikeConcurrencyTest {
 
         assertThat(likeCount).isEqualTo(threadCount);
 
+        // 스케줄러 작동
+        likeScheduler.syncContentLikeCount();
+
         // 수동 롤백 코드
+        jdbcTemplate.update("TRUNCATE TABLE content_like");
         jdbcTemplate.update("DELETE FROM member WHERE id >= ?", (long) start);
-        //jdbcTemplate.update("DELETE FROM content WHERE id = ?", memberId);
+        jdbcTemplate.update("DELETE FROM content WHERE id = ?", contentId);
 
         log.debug("1000개의 동시 좋아요 요청 테스트 종료!");
 
@@ -154,11 +164,14 @@ public class ContentLikeConcurrencyTest {
         String redisLikeContentUser = RedisKey.LIKE_CONTENT_USERS.makeKey(contentId);
         String redisLikeContentUserQueue = RedisKey.LIKE_CONTENT_USERS_QUEUE.makeKey(contentId);
         String redisLikeContentCount = RedisKey.LIKE_COMMENT_COUNT.makeKey(contentId);
+        String redisLikeUpdatedContents = RedisKey.LIKE_UPDATED_CONTENTS.makeKey();
+
 
         //  1. 테스트 전 Redis 상태를 깔끔하게 청소 (멱등성 보장)
         redisTemplate.delete(redisLikeContentUser);
         redisTemplate.delete(redisLikeContentUserQueue);
         redisTemplate.delete(redisLikeContentCount);
+        redisTemplate.delete(redisLikeUpdatedContents);
 
         Long memberId = jdbcTemplate.queryForObject("SELECT MAX(id) FROM MEMBER", Long.class);
         int start = memberId==null ? 1 : memberId.intValue()+1;
@@ -238,12 +251,17 @@ public class ContentLikeConcurrencyTest {
         // then
         Long likeCount = redisTemplate.opsForSet().size(redisLikeContentUser);
         assertThat(likeCount).isEqualTo(threadCount);
+        redisTemplate.opsForSet().add(redisLikeUpdatedContents, contentId);
+
+        // 스케줄러 작동
+        likeScheduler.syncContentLikeCount();
 
         // 수동 롤백 코드
+        jdbcTemplate.update("TRUNCATE TABLE content_like");
         jdbcTemplate.update("DELETE FROM member WHERE id >= ?", (long) start);
-        //jdbcTemplate.update("DELETE FROM content WHERE id = ?", contentId);
+        jdbcTemplate.update("DELETE FROM content WHERE id = ?", contentId);
 
-        log.debug("50000개의 동시 좋아요 요청 테스트 종료!");
+        log.debug("50000개의 동시 좋아요 요청 및 스케줄러 테스트 종료!");
 
     }
 

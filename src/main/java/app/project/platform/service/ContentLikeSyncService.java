@@ -71,7 +71,7 @@ public class ContentLikeSyncService {
                 redisTemplate.opsForHash().increment(MEMBER_CATEGORY_LIKE_COUNT, content.getCategory(), 1);
             }
 
-            redisTemplate.opsForList().trim(redisContentCountKey, memberIdsToInsert.size(), -1);
+            redisTemplate.opsForList().trim(redisLikeContentUsersKey, memberIdsToInsert.size(), -1);
             memberIdsToInsert = redisTemplate.opsForList().range(redisLikeContentUsersKey, start, end);
 
         }

@@ -34,8 +34,8 @@ public class LikeScheduler {
     private final CommentLikeSyncService commentLikeSyncService;
 
     //  10초마다 실행 (실무에서는 1분~5분궈장)
-    @Transactional
-    public void syncLikeCount() {
+    @Scheduled(fixedDelay = 10000)
+    public void syncContentLikeCount() {
 
         String DIRTY_KEY = RedisKey.LIKE_UPDATED_CONTENTS.makeKey();
 
