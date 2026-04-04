@@ -145,7 +145,6 @@ public class ContentLikeConcurrencyTest {
         // 수동 롤백 코드
         jdbcTemplate.update("TRUNCATE TABLE content_like");
         jdbcTemplate.update("DELETE FROM member WHERE id >= ?", (long) start);
-        jdbcTemplate.update("DELETE FROM content WHERE id = ?", contentId);
 
         log.debug("1000개의 동시 좋아요 요청 테스트 종료!");
 
@@ -259,7 +258,6 @@ public class ContentLikeConcurrencyTest {
         // 수동 롤백 코드
         jdbcTemplate.update("TRUNCATE TABLE content_like");
         jdbcTemplate.update("DELETE FROM member WHERE id >= ?", (long) start);
-        jdbcTemplate.update("DELETE FROM content WHERE id = ?", contentId);
 
         log.debug("50000개의 동시 좋아요 요청 및 스케줄러 테스트 종료!");
 

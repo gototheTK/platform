@@ -1,3 +1,9 @@
+server:
+  tomcat:
+    threads:
+      max: 200 #톰캣의 스레드 (기본 200)
+    accept-count: 500 # 톰캣의 스레드외에 대기하는 스레드들
+
 spring:
   servlet:
     multipart:
