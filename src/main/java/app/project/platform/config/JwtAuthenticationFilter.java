@@ -29,7 +29,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String authorization = request.getHeader("Authorization");
 
         //  2. 토큰이 없거나, 'Bearer '로 시작하지 않으면 바로 다음 필터로 넘깁니다. (인증 실패 상태로 진행)
-        if (authorization == null || authorization.startsWith("Bearer ")) {
+        if (authorization == null || !authorization.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
             return;
         }
@@ -38,11 +38,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String token = authorization.split(" ")[1];
 
         //  4. JwtUtil을 사용해 토큰이 유효한지 검증합니다.
-        if (jwtUtil.validateToken(token)) {
+        if (jwtUtil.validateAccessToken(token)) {
 
             //  5. 유효하다면 토큰에서 이메일과 권한을 꺼냅니다.
-            String email = jwtUtil.getEmail(token);
-            String role = jwtUtil.getRole(token);
+            String email = jwtUtil.getEmailFromAccessToken(token);
+            String role = jwtUtil.getRoleFromAccessToken(token);
 
             //  6. 스프링 시큐리티가 알아들을 수 있는 '인증 객체'를 만듭니다
             //  Role 앞에는 관례적으로 "ROLE_" 접두사를 붙여줍니다.

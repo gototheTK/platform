@@ -1,14 +1,17 @@
 package app.project.platform.service;
 
 
+import app.project.platform.domain.type.GrantType;
 import app.project.platform.domain.code.ErrorCode;
 import app.project.platform.domain.dto.LoginRequestDto;
 import app.project.platform.domain.dto.MemberDto;
 import app.project.platform.domain.dto.SignupRequestDto;
+import app.project.platform.domain.dto.TokenDto;
 import app.project.platform.domain.type.Role;
 import app.project.platform.entity.Member;
 import app.project.platform.exception.BusinessException;
 import app.project.platform.repository.MemberRepository;
+import app.project.platform.util.JwtUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -22,8 +25,10 @@ public class MemberService {
 
     private final MemberRepository memberRepository;
 
-@Transactional
-public Long signup(SignupRequestDto signupRequestDto) {
+    private final JwtUtil jwtUtil;
+
+    @Transactional
+    public Long signup(SignupRequestDto signupRequestDto) {
 
         // 이메일 중복 확인
         boolean isEmailDuplicate = memberRepository.findByEmail(signupRequestDto.getEmail()).isPresent();
@@ -57,6 +62,25 @@ public Long signup(SignupRequestDto signupRequestDto) {
         }
 
         return MemberDto.from(member);
+
+    }
+
+    // 조회 전용 트랜잭션에서는 JPA가 스냅샷을 만들지 않고, Dirty Checking(변경 감지)을 수행하지 않아 메모리와 성능이 최적화
+    // 리플리카 DB(Slave) 부하 분산 효과도 있습니다.
+    @Transactional(readOnly = true)
+    public TokenDto loginWithJwt(LoginRequestDto loginRequestDto) {
+
+        Member member = memberRepository.findByEmail(loginRequestDto.getEmail()).orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+
+        if (!passwordEncoder.matches(loginRequestDto.getPassword(), member.getPassword())) {
+            throw new BusinessException(ErrorCode.LOGIN_FAILED);
+        }
+
+        String accessToken = jwtUtil.createAccessToken(MemberDto.from(member));
+        String refreshToken = jwtUtil.createRefreshToken(MemberDto.from(member));
+
+        return TokenDto.builder().grantType(GrantType.Bearer.getType())
+                .accessToken(accessToken).refreshToken(refreshToken).build();
 
     }
 
