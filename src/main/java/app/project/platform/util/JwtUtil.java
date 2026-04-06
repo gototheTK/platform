@@ -26,14 +26,14 @@ public class JwtUtil {
     //  생성자를 통해 yml에 설정한 비밀키와 만료시간을 주입받아 초기화한다.
     public JwtUtil(@Value("${jwt.accessSecretKey}") String accessSecretKey,
                    @Value("${jwt.refreshSecretKey}") String refreshSecretKey,
-                   @Value("${jwt.access-expiration}") long accessExpiration,
-                   @Value("${jwt.refresh-expiration}") long refreshExpiration) {
+                   @Value("${jwt.access-expiration}") String accessExpiration,
+                   @Value("${jwt.refresh-expiration}") String refreshExpiration) {
         byte[] accessKeyBytes = Decoders.BASE64.decode(accessSecretKey);
         byte[] secretKeyBytes = Decoders.BASE64.decode(refreshSecretKey);
         this.accessSecretKey = Keys.hmacShaKeyFor(accessKeyBytes);
         this.refreshSecretKey = Keys.hmacShaKeyFor(secretKeyBytes);
-        this.accessExpiration = accessExpiration;
-        this.refreshExpiration = refreshExpiration;
+        this.accessExpiration = Long.parseLong(accessExpiration);
+        this.refreshExpiration = Long.parseLong(refreshExpiration);
     }
 
     //  엑세스 토큰 발급
