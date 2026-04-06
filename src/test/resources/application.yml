@@ -29,7 +29,7 @@ spring:
       # 풀에 유지할 최소 유휴 커넥션 수
       minimum-idle: 10
       # 풀의 최대 커넥션 수 (max_connection 고려)
-      maximum-pool-size=: 50
+      maximum-pool-size: 50
   h2:
     console:
       enabled: true
@@ -61,4 +61,4 @@ spring:
       org.hibernate.SQL: debug
 
 file:
-  dir: C:/images/
+  dir: ./images/
