@@ -90,6 +90,10 @@ jobs:
           SERVER_DB_URL: ${{ secrets.SERVER_DB_URL }}
           SERVER_DB_USERNAME: ${{ secrets.SERVER_DB_USERNAME }}
           SERVER_DB_PASSWORD: ${{ secrets.SERVER_DB_PASSWORD }}
+          ACCESS_SECRET_KEY: ${{secrets.ACCESS_SECRET_KEY}}
+          ACCESS_EXPIRATION: ${{secrets.ACCESS_EXPIRATION}}
+          REFRESH_SECRET_KEY: ${{secrets.REFRESH_SECRET_KEY}}
+          REFRESH_EXPIRATION: ${{secrets.REFRESH_EXPIRATION}}
         with:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
