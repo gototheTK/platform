@@ -5,6 +5,8 @@ import app.project.platform.domain.dto.CommentRequestDto;
 import app.project.platform.domain.dto.CommentResponseDto;
 import app.project.platform.domain.dto.MemberDto;
 import app.project.platform.exception.BusinessException;
+import app.project.platform.repository.MemberRepository;
+import app.project.platform.resolver.LoginUserArgumentResolver;
 import app.project.platform.service.CommentService;
 import app.project.platform.util.JwtUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -14,6 +16,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -43,10 +46,17 @@ public class CommentControllerTest {
     CommentService commentService;
 
     @MockitoBean
+    MemberRepository memberRepository;
+
+    @MockitoBean
+    LoginUserArgumentResolver loginUserArgumentResolver;
+
+    @MockitoBean
     JwtUtil jwtUtil;
 
     @Test
     @DisplayName("댓글 작성 성공")
+    @WithMockUser(username = "test@test.com", roles = "USER")
     void 댓글_작성_성공 () throws Exception {
 
         CommentRequestDto requestDto = CommentRequestDto.builder()
@@ -71,8 +81,7 @@ public class CommentControllerTest {
         // when & then
         mockMvc.perform(post("/api/v1/comment")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(requestDto))
-                .sessionAttr("LOGIN_MEMBER", memberDto))
+                .content(objectMapper.writeValueAsString(requestDto)))
             .andDo(print())
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.status").value("success"))
@@ -83,6 +92,7 @@ public class CommentControllerTest {
 
     @Test
     @DisplayName("댓글 수정 성공")
+    @WithMockUser(username = "test@test.com", roles = "USER")
     void 댓글_수정_성공 () throws Exception {
 
         CommentRequestDto commentRequestDto = CommentRequestDto.builder()
@@ -108,8 +118,7 @@ public class CommentControllerTest {
         // when & then
         mockMvc.perform(put("/api/v1/comment/{id}", 1L)
                 .content(objectMapper.writeValueAsString(commentRequestDto))
-                .contentType(MediaType.APPLICATION_JSON)
-                .sessionAttr("LOGIN_MEMBER", memberDto))
+                .contentType(MediaType.APPLICATION_JSON))
             .andDo(print())
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.status").value("success"))
@@ -121,6 +130,7 @@ public class CommentControllerTest {
 
     @Test
     @DisplayName("댓글 수정 실패 회원 불일치")
+    @WithMockUser(username = "test@test.com", roles = "USER")
     void 댓글_수정_실패_회원_불일치() throws Exception {
 
         Long commentId = 1L;
@@ -139,8 +149,7 @@ public class CommentControllerTest {
         // when & then
         mockMvc.perform(put("/api/v1/comment/{id}", commentId)
                 .content(objectMapper.writeValueAsString(commentRequestDto))
-                .contentType(MediaType.APPLICATION_JSON)
-                .sessionAttr("LOGIN_MEMBER", MemberDto.builder().id(1L).build()))
+                .contentType(MediaType.APPLICATION_JSON))
             .andExpect(status().isUnauthorized())
             .andExpect(jsonPath("$.message").value(ErrorCode.UNAUTHORIZED.getMessage()))
             .andExpect(jsonPath("$.data").isEmpty())
@@ -150,20 +159,18 @@ public class CommentControllerTest {
 
     @Test
     @DisplayName("댓글 줗아요 성공")
+    @WithMockUser(username = "test@test.com", roles = "USER")
     void 댓글_좋아요_성공 () throws Exception {
 
         Long commentId = 55L;
 
-        MemberDto memberDto = MemberDto.builder().id(1L).build();
-
         Long commentLikeId = 100L;
 
         //  given
-        given(commentService.addLike(eq(commentId), any(MemberDto.class))).willReturn(commentLikeId);
+        given(commentService.addLike(eq(commentId), any())).willReturn(commentLikeId);
 
         //  when & then
-        mockMvc.perform(post("/api/v1/comment/{id}/like", commentId)
-                .sessionAttr("LOGIN_MEMBER", memberDto))
+        mockMvc.perform(post("/api/v1/comment/{id}/like", commentId))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.status").value("success"))
             .andExpect(jsonPath("$.data").value(commentLikeId));
@@ -172,6 +179,7 @@ public class CommentControllerTest {
 
     @Test
     @DisplayName("댓글 좋아요 실패 중복")
+    @WithMockUser(username = "test@test.com", roles = "USER")
     void 댓글_좋아요_싪패_중복 () throws Exception {
 
         Long commentId = 55L;
@@ -179,11 +187,10 @@ public class CommentControllerTest {
         MemberDto memberDto = MemberDto.builder().id(1L).build();
 
         //  given
-        given(commentService.addLike(eq(commentId), any(MemberDto.class))).willThrow(new BusinessException(ErrorCode.ALREADY_LIKED));
+        given(commentService.addLike(eq(commentId), any())).willThrow(new BusinessException(ErrorCode.ALREADY_LIKED));
 
         //  when & then
-        mockMvc.perform(post("/api/v1/comment/{id}/like", commentId)
-                .sessionAttr("LOGIN_MEMBER", memberDto))
+        mockMvc.perform(post("/api/v1/comment/{id}/like", commentId))
             .andExpect(status().isConflict())
             .andExpect(jsonPath("$.status").value("fail"))
             .andExpect(jsonPath("$.message").value(ErrorCode.ALREADY_LIKED.getMessage()));
@@ -192,35 +199,33 @@ public class CommentControllerTest {
 
     @Test
     @DisplayName("댓글 좋아요 취소 성공")
+    @WithMockUser(username = "test@test.com", roles = "USER")
     void 댓글_좋아요_취소_성공 () throws Exception {
 
         Long commentId = 55L;
 
         MemberDto memberDto = MemberDto.builder().id(1L).build();
 
-        mockMvc.perform(delete("/api/v1/comment/{id}/like", commentId)
-                .sessionAttr("LOGIN_MEMBER", memberDto))
+        mockMvc.perform(delete("/api/v1/comment/{id}/like", commentId))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.status").value("success"));
 
-        verify(commentService, times(1)).removeLike(eq(commentId), any(MemberDto.class));
+        verify(commentService, times(1)).removeLike(eq(commentId), any());
 
     }
 
     @Test
     @DisplayName("댓글 좋아요 취소 실패 중복")
+    @WithMockUser(username = "test@test.com", roles = "USER")
     void 댓글_좋아요_취소_실패_미존재 () throws Exception {
 
         Long commentId = 55L;
 
-        MemberDto memberDto = MemberDto.builder().id(1L).build();
-
         //  given
         willThrow(new BusinessException(ErrorCode.LIKE_NOT_FOUND))
-                .given(commentService).removeLike(commentId, memberDto);
+                .given(commentService).removeLike(eq(commentId), any());
 
-        mockMvc.perform(delete("/api/v1/comment/{id}/like", commentId)
-                .sessionAttr("LOGIN_MEMBER", memberDto))
+        mockMvc.perform(delete("/api/v1/comment/{id}/like", commentId))
             .andExpect(status().isNotFound())
             .andExpect(jsonPath("$.message").value(ErrorCode.LIKE_NOT_FOUND.getMessage()));
 

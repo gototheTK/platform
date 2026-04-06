@@ -1,6 +1,8 @@
 package app.project.platform.controller;
 
 import app.project.platform.domain.dto.ContentResponseDto;
+import app.project.platform.repository.MemberRepository;
+import app.project.platform.resolver.LoginUserArgumentResolver;
 import app.project.platform.service.RankingService;
 import app.project.platform.util.JwtUtil;
 import org.hamcrest.Matchers;
@@ -36,6 +38,12 @@ public class RankingControllerTest {
 
     @MockitoBean
     JwtUtil jwtUtil;
+
+    @MockitoBean
+    MemberRepository memberRepository;
+
+    @MockitoBean
+    LoginUserArgumentResolver loginUserArgumentResolver;
 
     @Test
     @DisplayName("랭킹 조회 성공")

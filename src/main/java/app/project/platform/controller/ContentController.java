@@ -1,5 +1,6 @@
 package app.project.platform.controller;
 
+import app.project.platform.annotation.LoginUser;
 import app.project.platform.domain.ApiResponse;
 import app.project.platform.domain.dto.ContentCreateRequestDto;
 import app.project.platform.domain.dto.ContentResponseDto;
@@ -31,7 +32,7 @@ public class ContentController {
     @GetMapping
     public ResponseEntity<ApiResponse<Slice<ContentResponseDto>>> list(
             @PageableDefault(size = 50, page = 0, sort="id", direction = Sort.Direction.DESC) Pageable pageable,
-            @SessionAttribute(name = "LOGIN_MEMBER", required = false) MemberDto memberDto) {
+            @LoginUser MemberDto memberDto) {
 
         Slice<ContentResponseDto> list = contentService.list(pageable, memberDto);
 
@@ -41,7 +42,7 @@ public class ContentController {
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<ContentResponseDto>> read(
             @PathVariable(name = "id") Long id,
-            @SessionAttribute(name = "LOGIN_MEMBER", required = false) MemberDto memberDto) {
+            @LoginUser MemberDto memberDto) {
 
         ContentResponseDto contentResponseDto = contentService.read(id, memberDto);
 
@@ -52,7 +53,7 @@ public class ContentController {
     public ResponseEntity<ApiResponse<Long>> create(
             @RequestPart(name = "request") @Valid ContentCreateRequestDto contentCreateRequestDto,
             @RequestPart(name = "files") List<MultipartFile> files,
-            @SessionAttribute(name = "LOGIN_MEMBER") MemberDto memberDto) throws IOException {
+            @LoginUser MemberDto memberDto) throws IOException {
 
         Long contentId = contentService.create(contentCreateRequestDto, files, memberDto);
 
@@ -64,7 +65,7 @@ public class ContentController {
             @PathVariable(name = "id") Long id,
             @RequestPart(name = "request") @Valid ContentUpdateRequestDto contentUpdateRequestDto,
             @RequestPart(name = "files") List<MultipartFile> files,
-            @SessionAttribute(name = "LOGIN_MEMBER") MemberDto memberDto) throws IOException {
+            @LoginUser MemberDto memberDto) throws IOException {
 
         ContentResponseDto contentResponseDto = contentService.update(id, contentUpdateRequestDto, files, memberDto);
 
@@ -74,7 +75,7 @@ public class ContentController {
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<Void>> delete(
             @PathVariable(name = "id") Long id,
-            @SessionAttribute(name = "LOGIN_MEMBER") MemberDto memberDto) {
+            @LoginUser MemberDto memberDto) {
 
         contentService.delete(id, memberDto);
 
@@ -84,7 +85,7 @@ public class ContentController {
     @PostMapping("{id}/like")
     public ResponseEntity<ApiResponse<Long>> addLike(
             @PathVariable(name = "id") Long id,
-            @SessionAttribute(name = "LOGIN_MEMBER") MemberDto memberDto) {
+            @LoginUser MemberDto memberDto) {
 
         Long contentLikeId = contentService.addLike(id, memberDto);
 
@@ -94,7 +95,7 @@ public class ContentController {
     @DeleteMapping("{id}/like")
     public ResponseEntity<ApiResponse<Void>> removeLike(
             @PathVariable(name = "id") Long id,
-            @SessionAttribute(name = "LOGIN_MEMBER") MemberDto memberDto) {
+            @LoginUser MemberDto memberDto) {
 
         contentService.removeLike(id ,memberDto);
 
