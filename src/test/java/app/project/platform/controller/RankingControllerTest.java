@@ -2,6 +2,7 @@ package app.project.platform.controller;
 
 import app.project.platform.domain.dto.ContentResponseDto;
 import app.project.platform.service.RankingService;
+import app.project.platform.util.JwtUtil;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -32,6 +33,9 @@ public class RankingControllerTest {
 
     @MockitoBean
     RankingService rankingService;
+
+    @MockitoBean
+    JwtUtil jwtUtil;
 
     @Test
     @DisplayName("랭킹 조회 성공")

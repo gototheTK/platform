@@ -6,6 +6,7 @@ import app.project.platform.domain.dto.CommentResponseDto;
 import app.project.platform.domain.dto.MemberDto;
 import app.project.platform.exception.BusinessException;
 import app.project.platform.service.CommentService;
+import app.project.platform.util.JwtUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -40,6 +41,9 @@ public class CommentControllerTest {
 
     @MockitoBean
     CommentService commentService;
+
+    @MockitoBean
+    JwtUtil jwtUtil;
 
     @Test
     @DisplayName("댓글 작성 성공")

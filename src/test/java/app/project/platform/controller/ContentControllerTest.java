@@ -9,6 +9,7 @@ import app.project.platform.domain.type.ContentCategory;
 import app.project.platform.domain.type.Role;
 import app.project.platform.exception.BusinessException;
 import app.project.platform.service.ContentService;
+import app.project.platform.util.JwtUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,6 +39,9 @@ public class ContentControllerTest {
 
     @MockitoBean
     ContentService contentService;
+
+    @MockitoBean
+    JwtUtil jwtUtil;
 
     final String REQUEST_MAPPING = "/api/v1/content";
 
