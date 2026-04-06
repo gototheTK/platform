@@ -21,10 +21,6 @@ jobs:
         env:
           MYSQL_ROOT_PASSWORD: ${{ secrets.SERVER_DB_PASSWORD }} # 로컬 application.yml의 비밀번호와 맞추세요
           MYSQL_DATABASE: ${{ secrets.SERVER_DB_NAME }} # 로컬 application.yml의 DB명과 맞추세요
-          ACCESS_SECRET_KEY: ${{ secrets.ACCESS_SECRET_KEY }}
-          ACCESS_EXPIRATION: ${{ secrets.ACCESS_EXPIRATION }}
-          REFRESH_SECRET_KEY: ${{ secrets.REFRESH_SECRET_KEY }}
-          REFRESH_EXPIRATION: ${{ secrets.REFRESH_EXPIRATION }}
         ports:
           - 3306:3306
         options: >-
@@ -94,6 +90,10 @@ jobs:
           SERVER_DB_URL: ${{ secrets.SERVER_DB_URL }}
           SERVER_DB_USERNAME: ${{ secrets.SERVER_DB_USERNAME }}
           SERVER_DB_PASSWORD: ${{ secrets.SERVER_DB_PASSWORD }}
+          ACCESS_SECRET_KEY: ${{ secrets.ACCESS_SECRET_KEY }}
+          ACCESS_EXPIRATION: ${{ secrets.ACCESS_EXPIRATION }}
+          REFRESH_SECRET_KEY: ${{ secrets.REFRESH_SECRET_KEY }}
+          REFRESH_EXPIRATION: ${{ secrets.REFRESH_EXPIRATION }}
         with:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
@@ -115,6 +115,10 @@ jobs:
             -e SERVER_DB_URL=$SERVER_DB_URL \
             -e SERVER_DB_USERNAME=$SERVER_DB_USERNAME \
             -e SERVER_DB_PASSWORD=$SERVER_DB_PASSWORD \
+            -e ACCESS_SECRET_KEY=$ACCESS_SECRET_KEY \
+            -e ACCESS_EXPIRATION=$ACCESS_EXPIRATION \
+            -e REFRESH_SECRET_KEY=$REFRESH_SECRET_KEY \
+            -e REFRESH_EXPIRATION=$REFRESH_EXPIRATION \
             $DOCKER_USERNAME/platform-server:latest
             
             # 4. 불필요한 이미지 삭제 (용량 정리)
