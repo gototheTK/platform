@@ -17,9 +17,6 @@ class PlatformApplicationTests {
     @Autowired
     private RedisTemplate<String, Object> redisTemplate;
 
-    @Autowired
-    private JwtUtil jwtUtil;
-
     @Test
     void redisConnectionTest() {
         //  1. 데이터 저장 (Key: "test", Value: "hello redis")
@@ -33,6 +30,7 @@ class PlatformApplicationTests {
         assertThat(value).isEqualTo("hello redis");
 
     }
+
 	@Test
 	void contextLoads() {
 	}
