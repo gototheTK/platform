@@ -1,5 +1,6 @@
 package app.project.platform;
 
+import app.project.platform.util.JwtUtil;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -15,6 +16,9 @@ class PlatformApplicationTests {
 
     @Autowired
     private RedisTemplate<String, Object> redisTemplate;
+
+    @Autowired
+    private JwtUtil jwtUtil;
 
     @Test
     void redisConnectionTest() {

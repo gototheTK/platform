@@ -64,7 +64,7 @@ file:
   dir: ./images/
 
 jwt:
-  accessSecretKey: ${ACCESS_SECRET_KEY:test1}
-  refreshSecretKey: ${REFRESH_SECRET_KEY:test2}
+  accessSecretKey: ${ACCESS_SECRET_KEY:dGhpcy1pcy1kdW1teS1zZWNyZXQta2V5LWZvci1qd3QtYWNjZXNzLXRva2VuLXRlc3QtMTIzNDU=}
+  refreshSecretKey: ${REFRESH_SECRET_KEY:dGhpcy1pcy1kdW1teS1zZWNyZXQta2V5LWZvci1qd3QtcmVmcmVzaC10b2tlbi10ZXN0LTA5ODc2}
   access-expiration: ${ACCESS_EXPIRATION:123456}
   refresh-expiration: ${REFRESH_EXPIRATION:123456}
