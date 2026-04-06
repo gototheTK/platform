@@ -3,8 +3,10 @@ package app.project.platform.controller;
 import app.project.platform.domain.dto.LoginRequestDto;
 import app.project.platform.domain.dto.MemberDto;
 import app.project.platform.domain.dto.SignupRequestDto;
+import app.project.platform.domain.dto.TokenDto;
 import app.project.platform.domain.type.Role;
 import app.project.platform.service.MemberService;
+import app.project.platform.util.JwtUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,6 +35,9 @@ public class MemberControllerTest {
     @Autowired
     ObjectMapper objectMapper;
 
+    @MockitoBean
+    JwtUtil jwtUtil;
+
     final String REQUEST_MAPPING = "/api/v1/member";
 
     @Test
@@ -47,11 +52,11 @@ public class MemberControllerTest {
         given(memberService.signup(any())).willReturn(1L);
 
         mockMvc.perform(post("/api/v1/member/signup")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(requestDto)))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.status").value("success"))
-            .andExpect(jsonPath("$.data").value(1L));
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(requestDto)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("success"))
+                .andExpect(jsonPath("$.data").value(1L));
     }
 
     @Test
@@ -69,17 +74,23 @@ public class MemberControllerTest {
                     .role(Role.USER.getName())
                     .build();
 
-        given(memberService.login(any())).willReturn(memberDto);
+        String accessToken = jwtUtil.createRefreshToken(memberDto);
+        String refreshToken = jwtUtil.createAccessToken(memberDto);
+
+        TokenDto tokenDto = TokenDto.builder()
+                .refreshToken(accessToken)
+                .accessToken(refreshToken)
+                .build();
+
+        given(memberService.loginWithJwt(any())).willReturn(tokenDto);
 
         mockMvc.perform(post(REQUEST_MAPPING + "/login")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(requestDto)))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.status").value("success"))
-            .andExpect(jsonPath("$.data.id").value(memberDto.getId()))
-            .andExpect(jsonPath("$.data.email").value(memberDto.getEmail()))
-            .andExpect(jsonPath("$.data.nickname").value(memberDto.getNickname()))
-            .andExpect(jsonPath("$.data.role").value(memberDto.getRole()));
+            .andExpect(jsonPath("$.data.accessToken").value(tokenDto.getAccessToken()))
+            .andExpect(jsonPath("$.data.refreshToken").value(tokenDto.getRefreshToken()));
     }
 
 }
