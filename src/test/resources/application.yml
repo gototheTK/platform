@@ -62,3 +62,10 @@ spring:
 
 file:
   dir: ./images/
+
+
+jwt:
+  accessSecretKey: ${ACCESS_SECRET_KEY:ThisIsDummyAccessSecretKeyForTest1234567890}
+  refreshSecretKey: ${REFRESH_SECRET_KEY:ThisIsDummyRefreshSecretKeyForTest0987654321}
+  access-expiration: ${ACCESS_EXPIRATION:1800000}
+  refresh-expiration: ${REFRESH_EXPIRATION:604800000}
