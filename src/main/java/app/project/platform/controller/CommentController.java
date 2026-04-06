@@ -1,5 +1,6 @@
 package app.project.platform.controller;
 
+import app.project.platform.annotation.LoginUser;
 import app.project.platform.domain.ApiResponse;
 import app.project.platform.domain.dto.CommentRequestDto;
 import app.project.platform.domain.dto.CommentResponseDto;
@@ -20,7 +21,7 @@ public class CommentController {
     @PostMapping
     public ResponseEntity<ApiResponse<CommentResponseDto>> create (
             @RequestBody @Valid CommentRequestDto commentRequestDto,
-            @SessionAttribute(name = "LOGIN_MEMBER") MemberDto memberDto) {
+            @LoginUser MemberDto memberDto) {
 
         CommentResponseDto commentResponseDto = commentService.create(commentRequestDto, memberDto);
 
@@ -32,7 +33,7 @@ public class CommentController {
     public ResponseEntity<ApiResponse<CommentResponseDto>> update (
             @PathVariable(name = "id") Long id,
             @RequestBody @Valid CommentRequestDto commentRequestDto,
-            @SessionAttribute(name = "LOGIN_MEMBER") MemberDto memberDto) {
+            @LoginUser MemberDto memberDto) {
 
         CommentResponseDto commentResponseDto = commentService.update(id, commentRequestDto, memberDto);
 
@@ -43,7 +44,7 @@ public class CommentController {
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<Void>> delete (
             @PathVariable(name = "id") Long id,
-            @SessionAttribute(name = "LOGIN_MEMBER") MemberDto memberDto) {
+            @LoginUser MemberDto memberDto) {
 
         commentService.delete(id, memberDto);
 
@@ -54,7 +55,7 @@ public class CommentController {
     @PostMapping("/{id}/like")
     public ResponseEntity<ApiResponse<Long>> addLike (
             @PathVariable(name = "id") Long id,
-            @SessionAttribute(name = "LOGIN_MEMBER") MemberDto memberDto) {
+            @LoginUser MemberDto memberDto) {
 
         Long commentLikeId = commentService.addLike(id, memberDto);
 
@@ -64,7 +65,7 @@ public class CommentController {
     @DeleteMapping("/{id}/like")
     public ResponseEntity<ApiResponse<Void>> removeLike (
             @PathVariable(name = "id") Long id,
-            @SessionAttribute(name = "LOGIN_MEMBER") MemberDto memberDto) {
+            @LoginUser MemberDto memberDto) {
 
         commentService.removeLike(id, memberDto);
 

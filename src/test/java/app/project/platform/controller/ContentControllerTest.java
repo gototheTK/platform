@@ -8,6 +8,8 @@ import app.project.platform.domain.dto.MemberDto;
 import app.project.platform.domain.type.ContentCategory;
 import app.project.platform.domain.type.Role;
 import app.project.platform.exception.BusinessException;
+import app.project.platform.repository.MemberRepository;
+import app.project.platform.resolver.LoginUserArgumentResolver;
 import app.project.platform.service.ContentService;
 import app.project.platform.util.JwtUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -17,6 +19,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -41,11 +44,18 @@ public class ContentControllerTest {
     ContentService contentService;
 
     @MockitoBean
+    MemberRepository memberRepository;
+
+    @MockitoBean
+    LoginUserArgumentResolver loginUserArgumentResolver;
+
+    @MockitoBean
     JwtUtil jwtUtil;
 
     final String REQUEST_MAPPING = "/api/v1/content";
 
     @Test
+    @WithMockUser(username = "test@test.com", roles = "USER")
     void 글_생성 () throws Exception {
 
         ContentCreateRequestDto requestDto = ContentCreateRequestDto.builder()
@@ -81,14 +91,14 @@ public class ContentControllerTest {
                 .file(requestPart)
                 .file(files)
                 .contentType(MediaType.MULTIPART_FORM_DATA)
-                .accept(MediaType.APPLICATION_JSON)
-                .sessionAttr("LOGIN_MEMBER", memberDto))
+                .accept(MediaType.APPLICATION_JSON))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.data").value(contentId));
 
     }
     
     @Test
+    @WithMockUser(username = "test@test.com", roles = "USER")
     void 글_생성_실패_제목누락() throws Exception {
 
         ContentCreateRequestDto requestDto = ContentCreateRequestDto.builder()
@@ -115,14 +125,14 @@ public class ContentControllerTest {
                 .file(requestPart)
                 .file(files)
                 .contentType(MediaType.MULTIPART_FORM_DATA)
-                .accept("application/json")
-                .sessionAttr("LOGIN_MEMBER", MemberDto.builder().id(1L).build()))
+                .accept("application/json"))
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.status").value("fail"));
         
     }
 
     @Test
+    @WithMockUser(username = "test@test.com", roles = "USER")
     void 글_수정() throws Exception {
 
         Long contentId = 1L;
@@ -173,8 +183,7 @@ public class ContentControllerTest {
                 .file(files)
                 .with(req -> {req.setMethod("PUT"); return req;})
                 .contentType(MediaType.MULTIPART_FORM_DATA)
-                .accept("application/json")
-                .sessionAttr("LOGIN_MEMBER", memberDto))
+                .accept("application/json"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.data.id").value(requestDto.getId()))
             .andExpect(jsonPath("$.data.title").value(requestDto.getTitle()))
@@ -184,6 +193,7 @@ public class ContentControllerTest {
     }
 
     @Test
+    @WithMockUser(username = "test@test.com", roles = "USER")
     void 글_수정_실패_ID누락() throws Exception {
 
         ContentUpdateRequestDto requestDto = ContentUpdateRequestDto.builder()
@@ -210,26 +220,23 @@ public class ContentControllerTest {
                 .file(request)
                 .file(files)
                 .with(req -> {req.setMethod("PUT"); return req;})
-                .contentType(MediaType.MULTIPART_FORM_DATA)
-                .sessionAttr("LOGIN_MEMBER", MemberDto.builder().id(1L).build()))
+                .contentType(MediaType.MULTIPART_FORM_DATA))
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.status").value("fail"));
 
     }
 
     @Test
+    @WithMockUser(username = "test@test.com", roles = "USER")
     void 좋아요_성공 () throws  Exception {
 
         Long contentId = 1L;
 
-        MemberDto memberDto = MemberDto.builder().id(1L).build();
-
         Long contentLikeId = 1L;
 
-        given(contentService.addLike(contentId, memberDto)).willReturn(contentLikeId);
+        given(contentService.addLike(eq(contentId),any())).willReturn(contentLikeId);
 
-        mockMvc.perform(post("/api/v1/content/{id}/like", contentId)
-                .sessionAttr("LOGIN_MEMBER", memberDto))
+        mockMvc.perform(post("/api/v1/content/{id}/like", contentId))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.status").value("success"))
             .andExpect(jsonPath("$.data").value(contentLikeId));
@@ -237,16 +244,16 @@ public class ContentControllerTest {
     }
 
     @Test
+    @WithMockUser(username = "test@test.com", roles = "USER")
     void 좋아요_실패_중복 () throws Exception {
 
         Long contentId = 1L;
 
         MemberDto memberDto = MemberDto.builder().id(1L).build();
 
-        given(contentService.addLike(contentId, memberDto)).willThrow(new BusinessException(ErrorCode.ALREADY_LIKED));
+        given(contentService.addLike(eq(contentId), any())).willThrow(new BusinessException(ErrorCode.ALREADY_LIKED));
 
-        mockMvc.perform(post("/api/v1/content/{id}/like", contentId)
-                .sessionAttr("LOGIN_MEMBER", memberDto))
+        mockMvc.perform(post("/api/v1/content/{id}/like", contentId))
             .andExpect(status().isConflict())
             .andExpect(jsonPath("$.status").value("fail"))
             .andExpect(jsonPath("$.message").value(ErrorCode.ALREADY_LIKED.getMessage()));
@@ -254,31 +261,27 @@ public class ContentControllerTest {
     }
 
     @Test
+    @WithMockUser(username = "test@test.com", roles = "USER")
     void 좋아요_취소_성공 () throws Exception {
 
         Long contentId = 1L;
 
-        MemberDto memberDto = MemberDto.builder().id(1L).build();
-
-        mockMvc.perform(delete("/api/v1/content/{id}/like", contentId)
-                .sessionAttr("LOGIN_MEMBER", memberDto))
+        mockMvc.perform(delete("/api/v1/content/{id}/like", contentId))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.status").value("success"));
 
     }
 
     @Test
+    @WithMockUser(username = "test@test.com", roles = "USER")
     void 좋아요_취소_실패_미존재 () throws Exception {
 
         Long contentId = 1L;
 
-        MemberDto memberDto = MemberDto.builder().id(1L).build();
-
         willThrow(new BusinessException(ErrorCode.LIKE_NOT_FOUND))
-            .given(contentService).removeLike(contentId, memberDto);
+            .given(contentService).removeLike(eq(contentId), any());
 
-        mockMvc.perform(delete("/api/v1/content/{id}/like", contentId)
-                .sessionAttr("LOGIN_MEMBER", memberDto))
+        mockMvc.perform(delete("/api/v1/content/{id}/like", contentId))
             .andExpect(status().isNotFound())
             .andExpect(jsonPath("$.message").value(ErrorCode.LIKE_NOT_FOUND.getMessage()));
 

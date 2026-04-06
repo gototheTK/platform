@@ -5,6 +5,8 @@ import app.project.platform.domain.dto.MemberDto;
 import app.project.platform.domain.dto.SignupRequestDto;
 import app.project.platform.domain.dto.TokenDto;
 import app.project.platform.domain.type.Role;
+import app.project.platform.repository.MemberRepository;
+import app.project.platform.resolver.LoginUserArgumentResolver;
 import app.project.platform.service.MemberService;
 import app.project.platform.util.JwtUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -37,6 +39,12 @@ public class MemberControllerTest {
 
     @MockitoBean
     JwtUtil jwtUtil;
+
+    @MockitoBean
+    MemberRepository memberRepository;
+
+    @MockitoBean
+    LoginUserArgumentResolver loginUserArgumentResolver;
 
     final String REQUEST_MAPPING = "/api/v1/member";
 
