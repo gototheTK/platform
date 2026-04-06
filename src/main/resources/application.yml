@@ -54,3 +54,9 @@ logging:
 
 file:
   dir: C:/images/
+
+jwt:
+  accessSecretKey: ${ACCESS_SECRET_KEY}
+  refreshSecretKey: ${REFRESH_SECRET_KEY}
+  access-expiration: ${ACCESS_EXPIRATION}
+  refresh-expiration: ${REFRESH_EXPIRATION}
