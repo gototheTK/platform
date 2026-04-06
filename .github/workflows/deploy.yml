@@ -98,7 +98,7 @@ jobs:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.KEY }}
-          envs: DOCKER_USERNAME, SERVER_DB_URL, SERVER_DB_USERNAME, SERVER_DB_PASSWORD
+          envs: DOCKER_USERNAME, SERVER_DB_URL, SERVER_DB_USERNAME, SERVER_DB_PASSWORD, ACCESS_SECRET_KEY, ACCESS_EXPIRATION, REFRESH_SECRET_KEY, REFRESH_EXPIRATION
           script: |
             # 1. 기존에 실행 중인 서버가 있으면 끄고 삭제합니다.
             sudo docker stop platform-server || true
