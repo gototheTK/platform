@@ -33,14 +33,17 @@ spring:
     #driver-class-name: com.mysql.cj.jdbc.Driver
 
     hikari:
-      # DB 타임아웃보다 약 15~30초 짧게 설정 (단위: ms)
-      max-lifetime: 30000
-      # 커넥션을 획득하기 위해 대기하는 최대 시간
-      connection-timeout: 30000
-      # 풀에 유지할 최소 유휴 커넥션 수
+      # AWS RDS의 기본 타임아웃은 보통 15~30분입니다.
+      # 이보다 살짝 짧은 10분(600,000ms) 정도로 설정하여 안전하게 커넥션을 순환시킵니다.
+      max-lifetime: 580000
+
+      # 장애 전파 방지 (Fail-fast): 커넥션이 없으면 3초만 기다리고 빠르게 에러 반환
+      connection-timeout: 3000
+
+      # 풀 사이즈 고정: 성능 최적화를 위해 minimum-idle과 maximum-pool-size를 동일하게 맞춥니다.
       minimum-idle: 10
       # 풀의 최대 커넥션 수 (max_connection 고려)
-      maximum-pool-size: 100
+      maximum-pool-size: 50
 
   jpa:
     hibernate:
