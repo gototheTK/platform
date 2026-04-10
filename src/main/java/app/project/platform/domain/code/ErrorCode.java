@@ -57,8 +57,28 @@ public enum ErrorCode {
     // =================================================================
     FILE_UPLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "F001", "파일 업로드 중 오류가 발생했습니다."),
     INVALID_FILE_EXTENSION(HttpStatus.BAD_REQUEST, "F002", "지원하지 않는 파일 형식입니다. (예: jpg, png만 가능)"),
-    FILE_NOT_FOUND(HttpStatus.NOT_FOUND, "F003", "해당 파일을 찾을 수 없습니다.");
+    FILE_NOT_FOUND(HttpStatus.NOT_FOUND, "F003", "해당 파일을 찾을 수 없습니다."),
 
+    // =================================================================
+    // 7. 인가/인증
+    // =================================================================
+
+    // 1. Access Token 관련 에러 (주로 JwtFilter에서 발생)
+    EXPIRED_ACCESS_TOKEN(HttpStatus.UNAUTHORIZED, "AUTH001", "액세스 토큰이 만료되었습니다."),
+    INVALID_TOKEN_SIGNATURE(HttpStatus.UNAUTHORIZED, "AUTH002", "유효하지 않은 토큰 서명입니다."),
+    MALFORMED_TOKEN(HttpStatus.UNAUTHORIZED, "AUTH003", "손상되거나 잘못된 형식의 토큰입니다."),
+    UNSUPPORTED_TOKEN(HttpStatus.UNAUTHORIZED, "AUTH004", "지원하지 않는 토큰 형식입니다."),
+    EMPTY_TOKEN(HttpStatus.UNAUTHORIZED, "AUTH005", "요청에 인증 토큰이 존재하지 않습니다."),
+
+    // 2. Refresh Token 및 재발급 관련 에러 (주로 ReissueController/Service에서 발생)
+    EXPIRED_REFRESH_TOKEN(HttpStatus.UNAUTHORIZED, "AUTH010", "리프레시 토큰이 만료되었습니다. 다시 로그인해주세요."),
+    REFRESH_TOKEN_NOT_FOUND(HttpStatus.UNAUTHORIZED, "AUTH011", "로그아웃 되었거나 서버에 존재하지 않는 리프레시 토큰입니다."),
+    REFRESH_TOKEN_MISMATCH(HttpStatus.UNAUTHORIZED, "AUTH012", "제공된 리프레시 토큰이 서버의 정보와 일치하지 않습니다.");
+
+    // 3. 권한(Authorization) 관련 에러 (인가 실패 시)
+    // ACCESS_DENIED(HttpStatus.FORBIDDEN, "AUTH020", "해당 리소스에 접근할 권한이 없습니다.")
+
+    ;
     // 필드 정의
     private final HttpStatus status; // HTTP 상태 코드 (200, 400, 404 등)
     private final String code;       // 우리가 정의한 고유 코드

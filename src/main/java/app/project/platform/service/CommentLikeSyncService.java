@@ -1,6 +1,6 @@
 package app.project.platform.service;
 
-import app.project.platform.domain.RedisKey;
+import app.project.platform.domain.PostRedisKey;
 import app.project.platform.repository.CommentRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,7 +25,7 @@ public class CommentLikeSyncService {
     public void processSingleCommentSync(Long commentId) {
 
         //  1. 총 좋아요 수 동기화
-        String redisLikeCommentCount = RedisKey.LIKE_COMMENT_COUNT.makeKey(commentId);
+        String redisLikeCommentCount = PostRedisKey.LIKE_COMMENT_COUNT.makeKey(commentId);
         Object countObj = redisTemplate.opsForValue().get(redisLikeCommentCount);
 
         if (countObj != null) {
@@ -42,7 +42,7 @@ public class CommentLikeSyncService {
         long start = 0;
         long end = unit-1;
 
-        String redisLikeCommentUsersQueue = RedisKey.LIKE_COMMENT_USERS_QUEUE.makeKey(commentId);
+        String redisLikeCommentUsersQueue = PostRedisKey.LIKE_COMMENT_USERS_QUEUE.makeKey(commentId);
         String insert = "INSERT INTO comment_like (comment_id, member_id) VALUES(?, ?)";
 
         List<Object> memberIds = redisTemplate.opsForList().range(redisLikeCommentUsersQueue, start, end);
@@ -64,7 +64,7 @@ public class CommentLikeSyncService {
         }
 
         // 3. 좋아요 취소 큐 동기화 (Batch Delete)
-        String redisLikeCommentUsersRemoveQueue = RedisKey.LIKE_COMMENT_USERS_REMOVE_QUEUE.makeKey(commentId);
+        String redisLikeCommentUsersRemoveQueue = PostRedisKey.LIKE_COMMENT_USERS_REMOVE_QUEUE.makeKey(commentId);
         String delete = "DELETE FROM comment_like WHERE comment_id = ? AND member_id = ?";
 
         memberIds = redisTemplate.opsForList().range(redisLikeCommentUsersRemoveQueue, start, end);

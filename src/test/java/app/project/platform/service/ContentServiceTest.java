@@ -1,6 +1,6 @@
 package app.project.platform.service;
 
-import app.project.platform.domain.RedisKey;
+import app.project.platform.domain.PostRedisKey;
 import app.project.platform.domain.code.ErrorCode;
 import app.project.platform.domain.dto.ContentCreateRequestDto;
 import app.project.platform.domain.dto.ContentResponseDto;
@@ -10,7 +10,6 @@ import app.project.platform.domain.type.ContentCategory;
 import app.project.platform.domain.type.Role;
 import app.project.platform.entity.Content;
 import app.project.platform.entity.ContentImage;
-import app.project.platform.entity.ContentLike;
 import app.project.platform.entity.Member;
 import app.project.platform.exception.BusinessException;
 import app.project.platform.handler.FileHandler;
@@ -115,12 +114,12 @@ public class ContentServiceTest {
         //  4. 유저의 취향 벡터 (Mocking)
         Map<Object, Object> mockViewVector = new HashMap<>();
         mockViewVector.put(ContentCategory.CARTOON.name(), "10");
-        String viewRedisKey = RedisKey.MEMBER_CATEGORY_LIKE_COUNT.makeKey(memberId);
+        String viewRedisKey = PostRedisKey.MEMBER_CATEGORY_LIKE_COUNT.makeKey(memberId);
         given(hashOperations.entries(eq(viewRedisKey))).willReturn(mockViewVector);
 
         Map<Object, Object> mockLikeVector = new HashMap<>();
         mockLikeVector.put(ContentCategory.CARTOON.name(), "5");
-        String likeRedisKey = RedisKey.MEMBER_CATEGORY_VIEW_COUNT.makeKey(memberId);
+        String likeRedisKey = PostRedisKey.MEMBER_CATEGORY_VIEW_COUNT.makeKey(memberId);
         given(hashOperations.entries(eq(likeRedisKey))).willReturn(mockLikeVector);
 
         //  when
@@ -132,11 +131,11 @@ public class ContentServiceTest {
         assertThat(result.hasNext()).isTrue();
 
         // 2. 커서가 잘 갱신되었는가? (마지막 게시글 ID로 set 되었는지 검증)
-        String feedCursorKey = RedisKey.FEED_CURSOR.makeKey(memberId);
+        String feedCursorKey = PostRedisKey.FEED_CURSOR.makeKey(memberId);
         verify(valueOperations, times(1)).set(eq(feedCursorKey), eq(String.valueOf(mockContents.get(49).getId())));
 
         // 3. 남은 5개의 글이 Redis 버퍼에 잘 Push 되었는가?
-        String bufferCursorKey= RedisKey.FEED_BUFFER.makeKey(memberId);
+        String bufferCursorKey= PostRedisKey.FEED_BUFFER.makeKey(memberId);
         verify(listOperations, times(1)).rightPushAll(eq(bufferCursorKey), any(Object[].class));
 
         // 4. (중요) TECH 카테고리 글이 상위로 정렬되었는지 확인하는 로직 추가 가능
@@ -148,6 +147,7 @@ public class ContentServiceTest {
     //  테스트용 데이터 생성 유틸
     private List<Content> createMockContents(int count) {
         List<Content> contents = new ArrayList<>();
+
         for (long i = 1; i <= count; i++) {
 
             Member member = Member.builder().build();
@@ -305,12 +305,12 @@ public class ContentServiceTest {
         String today = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
 
         // Redis의 키
-        String redisValidContents = RedisKey.VALID_CONTENTS.makeKey();
-        String redisLikeContentUsers = RedisKey.LIKE_CONTENT_USERS.makeKey(contentId);
-        String redisLikeContentUsersQueue = RedisKey.LIKE_CONTENT_USERS_QUEUE.makeKey(contentId);
-        String redisLikeContentCount = RedisKey.LIKE_CONTENT_COUNT.makeKey(contentId);
-        String redisLikeDailyRankingCount = RedisKey.LIKE_DAILY_RANKING_COUNT.makeKey(today);
-        String redisLikeUpdatedContents = RedisKey.LIKE_UPDATED_CONTENTS.makeKey();
+        String redisValidContents = PostRedisKey.VALID_CONTENTS.makeKey();
+        String redisLikeContentUsers = PostRedisKey.LIKE_CONTENT_USERS.makeKey(contentId);
+        String redisLikeContentUsersQueue = PostRedisKey.LIKE_CONTENT_USERS_QUEUE.makeKey(contentId);
+        String redisLikeContentCount = PostRedisKey.LIKE_CONTENT_COUNT.makeKey(contentId);
+        String redisLikeDailyRankingCount = PostRedisKey.LIKE_DAILY_RANKING_COUNT.makeKey(today);
+        String redisLikeUpdatedContents = PostRedisKey.LIKE_UPDATED_CONTENTS.makeKey();
 
 
         //  given (Mocking)
@@ -355,12 +355,12 @@ public class ContentServiceTest {
         String today = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
 
         // Redis의 키
-        String redisValidContents = RedisKey.VALID_CONTENTS.makeKey();
-        String redisLikeContentUsers = RedisKey.LIKE_CONTENT_USERS.makeKey(contentId);
-        String redisLikeContentUsersQueue = RedisKey.LIKE_CONTENT_USERS_QUEUE.makeKey(contentId);
-        String redisLikeContentCount = RedisKey.LIKE_CONTENT_COUNT.makeKey(contentId);
-        String redisLikeDailyRankingCount = RedisKey.LIKE_DAILY_RANKING_COUNT.makeKey(today);
-        String redisLikeUpdatedContents = RedisKey.LIKE_UPDATED_CONTENTS.makeKey();
+        String redisValidContents = PostRedisKey.VALID_CONTENTS.makeKey();
+        String redisLikeContentUsers = PostRedisKey.LIKE_CONTENT_USERS.makeKey(contentId);
+        String redisLikeContentUsersQueue = PostRedisKey.LIKE_CONTENT_USERS_QUEUE.makeKey(contentId);
+        String redisLikeContentCount = PostRedisKey.LIKE_CONTENT_COUNT.makeKey(contentId);
+        String redisLikeDailyRankingCount = PostRedisKey.LIKE_DAILY_RANKING_COUNT.makeKey(today);
+        String redisLikeUpdatedContents = PostRedisKey.LIKE_UPDATED_CONTENTS.makeKey();
 
 
         //  given
@@ -402,7 +402,7 @@ public class ContentServiceTest {
         MemberDto memberDto = MemberDto.builder().id(memberId).build();
 
         // Redis 키
-        String redisValidContents = RedisKey.VALID_CONTENTS.makeKey();
+        String redisValidContents = PostRedisKey.VALID_CONTENTS.makeKey();
 
         //  given
         //  Reids 처리 반환
@@ -439,8 +439,8 @@ public class ContentServiceTest {
         String today = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
 
         // Redis의 키
-        String redisValidContents = RedisKey.VALID_CONTENTS.makeKey();
-        String redisLikeContentUsers = RedisKey.LIKE_CONTENT_USERS.makeKey(contentId);
+        String redisValidContents = PostRedisKey.VALID_CONTENTS.makeKey();
+        String redisLikeContentUsers = PostRedisKey.LIKE_CONTENT_USERS.makeKey(contentId);
 
         //  given (Mocking)
 
@@ -476,12 +476,12 @@ public class ContentServiceTest {
         String today = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
 
         // Redis의 키
-        String redisValidContents = RedisKey.VALID_CONTENTS.makeKey();
-        String redisLikeContentUsers = RedisKey.LIKE_CONTENT_USERS.makeKey(contentId);
-        String redisLikeContentUsersRemoveQueue = RedisKey.LIKE_CONTENT_USERS_REMOVE_QUEUE.makeKey(contentId);
-        String redisLikeContentCount = RedisKey.LIKE_CONTENT_COUNT.makeKey(contentId);
-        String redisLikeDailyRankingCount = RedisKey.LIKE_DAILY_RANKING_COUNT.makeKey(today);
-        String redisLikeUpdatedContents = RedisKey.LIKE_UPDATED_CONTENTS.makeKey();
+        String redisValidContents = PostRedisKey.VALID_CONTENTS.makeKey();
+        String redisLikeContentUsers = PostRedisKey.LIKE_CONTENT_USERS.makeKey(contentId);
+        String redisLikeContentUsersRemoveQueue = PostRedisKey.LIKE_CONTENT_USERS_REMOVE_QUEUE.makeKey(contentId);
+        String redisLikeContentCount = PostRedisKey.LIKE_CONTENT_COUNT.makeKey(contentId);
+        String redisLikeDailyRankingCount = PostRedisKey.LIKE_DAILY_RANKING_COUNT.makeKey(today);
+        String redisLikeUpdatedContents = PostRedisKey.LIKE_UPDATED_CONTENTS.makeKey();
 
 
         //  given (Mocking)
@@ -523,12 +523,12 @@ public class ContentServiceTest {
         String today = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
 
         // Redis의 키
-        String redisValidContents = RedisKey.VALID_CONTENTS.makeKey();
-        String redisLikeContentUsers = RedisKey.LIKE_CONTENT_USERS.makeKey(contentId);
-        String redisLikeContentUsersRemoveQueue = RedisKey.LIKE_CONTENT_USERS_REMOVE_QUEUE.makeKey(contentId);
-        String redisLikeContentCount = RedisKey.LIKE_CONTENT_COUNT.makeKey(contentId);
-        String redisLikeDailyRankingCount = RedisKey.LIKE_DAILY_RANKING_COUNT.makeKey(today);
-        String redisLikeUpdatedContents = RedisKey.LIKE_UPDATED_CONTENTS.makeKey();
+        String redisValidContents = PostRedisKey.VALID_CONTENTS.makeKey();
+        String redisLikeContentUsers = PostRedisKey.LIKE_CONTENT_USERS.makeKey(contentId);
+        String redisLikeContentUsersRemoveQueue = PostRedisKey.LIKE_CONTENT_USERS_REMOVE_QUEUE.makeKey(contentId);
+        String redisLikeContentCount = PostRedisKey.LIKE_CONTENT_COUNT.makeKey(contentId);
+        String redisLikeDailyRankingCount = PostRedisKey.LIKE_DAILY_RANKING_COUNT.makeKey(today);
+        String redisLikeUpdatedContents = PostRedisKey.LIKE_UPDATED_CONTENTS.makeKey();
 
 
         //  given (Mocking)
@@ -570,7 +570,7 @@ public class ContentServiceTest {
         MemberDto memberDto = MemberDto.builder().id(memberId).build();
 
         // Redis 키
-        String redisValidContents = RedisKey.VALID_CONTENTS.makeKey();
+        String redisValidContents = PostRedisKey.VALID_CONTENTS.makeKey();
 
         //  given
         //  Reids 처리 반환
@@ -602,8 +602,8 @@ public class ContentServiceTest {
         MemberDto memberDto = MemberDto.builder().id(memberId).build();
 
         // Redis의 키
-        String redisValidContents = RedisKey.VALID_CONTENTS.makeKey();
-        String redisLikeContentUsers = RedisKey.LIKE_CONTENT_USERS.makeKey(contentId);
+        String redisValidContents = PostRedisKey.VALID_CONTENTS.makeKey();
+        String redisLikeContentUsers = PostRedisKey.LIKE_CONTENT_USERS.makeKey(contentId);
 
         //  given (Mocking)
 

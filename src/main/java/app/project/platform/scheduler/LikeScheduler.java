@@ -1,20 +1,16 @@
 package app.project.platform.scheduler;
 
-import app.project.platform.domain.RedisKey;
+import app.project.platform.domain.PostRedisKey;
 import app.project.platform.entity.Content;
 import app.project.platform.repository.CommentRepository;
-import app.project.platform.repository.ContentLikeRepository;
 import app.project.platform.repository.ContentRepository;
-import app.project.platform.repository.MemberRepository;
 import app.project.platform.service.CommentLikeSyncService;
 import app.project.platform.service.ContentLikeSyncService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -37,7 +33,7 @@ public class LikeScheduler {
     @Scheduled(fixedDelay = 10000)
     public void syncContentLikeCount() {
 
-        String DIRTY_KEY = RedisKey.LIKE_UPDATED_CONTENTS.makeKey();
+        String DIRTY_KEY = PostRedisKey.LIKE_UPDATED_CONTENTS.makeKey();
 
         //  1. 변경된 게시글 ID들을 팝(Pop)으로 한 번에 가져옵니다.
         //  (pop을 쓰면 가져옴과 동시에 Redis Set에 삭제되므로 중복 처리 방지됨)
@@ -71,7 +67,7 @@ public class LikeScheduler {
     @Scheduled(fixedDelay = 10000)
     public void syncCommentLikeCount() {
 
-        String DIRTY_KEY = RedisKey.LIKE_UPDATED_COMMENTS.makeKey();
+        String DIRTY_KEY = PostRedisKey.LIKE_UPDATED_COMMENTS.makeKey();
 
         //  1.  변경 된 ID들을 팝으로 가져옵니다.
         List<Object> poppedIds = redisTemplate.opsForSet().pop(DIRTY_KEY, 1000);

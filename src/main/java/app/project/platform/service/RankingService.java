@@ -1,6 +1,6 @@
 package app.project.platform.service;
 
-import app.project.platform.domain.RedisKey;
+import app.project.platform.domain.PostRedisKey;
 import app.project.platform.domain.dto.ContentResponseDto;
 import app.project.platform.entity.Content;
 import app.project.platform.repository.ContentRepository;
@@ -29,7 +29,7 @@ public class RankingService {
     public List<ContentResponseDto> readDailyRankingContents(int num) {
 
         String today = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
-        String LIKE_CONTENT_RANKING  = RedisKey.LIKE_DAILY_RANKING_COUNT.getPattern() + today;
+        String LIKE_CONTENT_RANKING  = PostRedisKey.LIKE_DAILY_RANKING_COUNT.getPattern() + today;
 
         Set<Object> idObjSet = redisTemplate.opsForZSet().reverseRange(LIKE_CONTENT_RANKING, 0, num - 1);
 

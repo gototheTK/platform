@@ -1,7 +1,6 @@
 package app.project.platform.service;
 
-import app.project.platform.domain.RedisKey;
-import app.project.platform.entity.Comment;
+import app.project.platform.domain.PostRedisKey;
 import app.project.platform.entity.Content;
 import app.project.platform.repository.ContentRepository;
 import lombok.RequiredArgsConstructor;
@@ -29,7 +28,7 @@ public class ContentLikeSyncService {
     public void processSingleContentSync(Content content) {
 
         //  1. 해당 글의 좋아요 수 동기화
-        String redisContentCountKey = RedisKey.LIKE_CONTENT_COUNT.makeKey(content.getId());
+        String redisContentCountKey = PostRedisKey.LIKE_CONTENT_COUNT.makeKey(content.getId());
         Object countObj = redisTemplate.opsForValue().get(redisContentCountKey);
 
         if (countObj != null) {
@@ -46,7 +45,7 @@ public class ContentLikeSyncService {
         long start = 0;
         long end = unit-1;
 
-        String redisLikeContentUsersKey = RedisKey.LIKE_CONTENT_USERS_QUEUE.makeKey(content.getId());
+        String redisLikeContentUsersKey = PostRedisKey.LIKE_CONTENT_USERS_QUEUE.makeKey(content.getId());
         String insertSql = "INSERT INTO content_like (content_id, member_id) VALUES(?, ?)";
 
         List<Object> memberIdsToInsert = redisTemplate.opsForList().range(redisLikeContentUsersKey, start, end);
@@ -67,7 +66,7 @@ public class ContentLikeSyncService {
                 Long memberId = Long.valueOf(memberObj.toString());
 
                 // 유저별 카운트 증가
-                String MEMBER_CATEGORY_LIKE_COUNT = RedisKey.MEMBER_CATEGORY_LIKE_COUNT.makeKey(memberId);
+                String MEMBER_CATEGORY_LIKE_COUNT = PostRedisKey.MEMBER_CATEGORY_LIKE_COUNT.makeKey(memberId);
                 redisTemplate.opsForHash().increment(MEMBER_CATEGORY_LIKE_COUNT, content.getCategory(), 1);
             }
 
@@ -76,7 +75,7 @@ public class ContentLikeSyncService {
 
         }
 
-        String redisLikeContentUsersRemoveQueue = RedisKey.LIKE_CONTENT_USERS_REMOVE_QUEUE.makeKey(content.getId());
+        String redisLikeContentUsersRemoveQueue = PostRedisKey.LIKE_CONTENT_USERS_REMOVE_QUEUE.makeKey(content.getId());
         String deleteSql = "DELETE FROM content_like WHERE content_id = ? AND member_id = ?";
 
         List<Object> memberIdsToRemove = redisTemplate.opsForList().range(redisLikeContentUsersRemoveQueue, start, end);
@@ -97,7 +96,7 @@ public class ContentLikeSyncService {
                 Long memberId = Long.valueOf(memberObj.toString());
 
                 // 유저별 카운트 증가
-                String MEMBER_CATEGORY_LIKE_COUNT = RedisKey.MEMBER_CATEGORY_LIKE_COUNT.makeKey(memberId);
+                String MEMBER_CATEGORY_LIKE_COUNT = PostRedisKey.MEMBER_CATEGORY_LIKE_COUNT.makeKey(memberId);
                 redisTemplate.opsForHash().increment(MEMBER_CATEGORY_LIKE_COUNT, content.getCategory(), -1);
             }
 

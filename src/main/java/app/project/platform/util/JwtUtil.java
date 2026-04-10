@@ -1,18 +1,26 @@
 package app.project.platform.util;
 
+import app.project.platform.domain.code.ErrorCode;
 import app.project.platform.domain.dto.MemberDto;
 import app.project.platform.domain.dto.TokenDto;
 import app.project.platform.entity.Member;
+import app.project.platform.exception.BusinessException;
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
 import java.util.Date;
 
+@Slf4j
 @Component
+@Getter
 public class JwtUtil {
 
     private final SecretKey accessSecretKey;
@@ -100,24 +108,14 @@ public class JwtUtil {
 
     //  엑세스 토큰 유효성 검증
     public boolean validateAccessToken(String token) {
-        try {
-            Jwts.parser().verifyWith(accessSecretKey).build().parseSignedClaims(token);
-            return true;
-        } catch (Exception e) {
-            //  만료되었거나, 손상되었거나, 지원되지 않는 토큰일 경우 예외가 발생합니다.
-            return false;
-        }
+        Jwts.parser().verifyWith(accessSecretKey).build().parseSignedClaims(token);
+        return true;
     }
 
     //  리프레시 토큰 유효성 검증
     public boolean validateRefreshToken(String token) {
-        try {
-            Jwts.parser().verifyWith(refreshSecretKey).build().parseSignedClaims(token);
-            return true;
-        } catch (Exception e) {
-            //  만료되었거나, 손상되었거나, 지원되지 않는 토큰일 경우 예외가 발생합니다.
-            return false;
-        }
+        Jwts.parser().verifyWith(refreshSecretKey).build().parseSignedClaims(token);
+        return true;
     }
 
 }

@@ -1,6 +1,7 @@
 package app.project.platform.service;
 
 
+import app.project.platform.domain.AuthRedisKey;
 import app.project.platform.domain.code.ErrorCode;
 import app.project.platform.domain.dto.LoginRequestDto;
 import app.project.platform.domain.dto.MemberDto;
@@ -12,11 +13,16 @@ import app.project.platform.entity.Member;
 import app.project.platform.exception.BusinessException;
 import app.project.platform.repository.MemberRepository;
 import app.project.platform.util.JwtUtil;
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.JwtException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class MemberService {
@@ -26,6 +32,8 @@ public class MemberService {
     private final MemberRepository memberRepository;
 
     private final JwtUtil jwtUtil;
+
+    private final RedisTemplate<String, Object> redisTemplate;
 
     @Transactional
     public Long signup(SignupRequestDto signupRequestDto) {
@@ -78,6 +86,50 @@ public class MemberService {
 
         String accessToken = jwtUtil.createAccessToken(MemberDto.from(member));
         String refreshToken = jwtUtil.createRefreshToken(MemberDto.from(member));
+
+        String redisRefreshToken = AuthRedisKey.REFRESH_TOKEN.makeRefreshToken(member.getEmail());
+
+        redisTemplate.opsForValue().set(redisRefreshToken, refreshToken, jwtUtil.getRefreshExpiration(), AuthRedisKey.REFRESH_TOKEN.getTimeUnit());
+
+        return TokenDto.builder().grantType(GrantType.Bearer.getType())
+                .accessToken(accessToken).refreshToken(refreshToken).build();
+
+    }
+
+    public TokenDto reissueWithJwt(String token) {
+
+        if (token == null)
+            throw new BusinessException(ErrorCode.EMPTY_TOKEN);
+
+        try {
+            jwtUtil.validateRefreshToken(token);
+        } catch (ExpiredJwtException e) {
+            log.info(ErrorCode.EXPIRED_REFRESH_TOKEN.getMessage());
+            throw new BusinessException(ErrorCode.EXPIRED_REFRESH_TOKEN);
+        } catch (JwtException | IllegalArgumentException e) {
+            log.info(ErrorCode.MALFORMED_TOKEN.getMessage());
+            throw new BusinessException(ErrorCode.MALFORMED_TOKEN);
+        }
+
+        String email = jwtUtil.getEmailFromRefreshToken(token);
+        String role = jwtUtil.getRoleFromRefreshToken(token);
+
+        String redisRefreshToken = AuthRedisKey.REFRESH_TOKEN.makeRefreshToken(email);
+        String savedToken = (String) redisTemplate.opsForValue().get(redisRefreshToken);
+
+        if (savedToken == null) {
+            throw new BusinessException(ErrorCode.REFRESH_TOKEN_NOT_FOUND);
+        }
+
+        if (!token.equals(savedToken)) {
+            redisTemplate.delete(redisRefreshToken);
+            throw new BusinessException(ErrorCode.REFRESH_TOKEN_MISMATCH);
+        }
+
+        String refreshToken = jwtUtil.createRefreshToken(MemberDto.builder().email(email).role(role).build());
+        String accessToken = jwtUtil.createAccessToken(MemberDto.builder().email(email).role(role).build());
+
+        redisTemplate.opsForValue().set(redisRefreshToken, refreshToken, jwtUtil.getRefreshExpiration(), AuthRedisKey.REFRESH_TOKEN.getTimeUnit());
 
         return TokenDto.builder().grantType(GrantType.Bearer.getType())
                 .accessToken(accessToken).refreshToken(refreshToken).build();

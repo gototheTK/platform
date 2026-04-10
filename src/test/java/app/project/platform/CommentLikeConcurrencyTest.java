@@ -1,16 +1,14 @@
 package app.project.platform;
 
-import app.project.platform.domain.RedisKey;
+import app.project.platform.domain.PostRedisKey;
 import app.project.platform.domain.dto.CommentRequestDto;
 import app.project.platform.domain.dto.CommentResponseDto;
 import app.project.platform.domain.dto.MemberDto;
 import app.project.platform.domain.type.Role;
-import app.project.platform.entity.Content;
 import app.project.platform.entity.Member;
 import app.project.platform.repository.MemberRepository;
 import app.project.platform.scheduler.LikeScheduler;
 import app.project.platform.service.CommentService;
-import app.project.platform.service.ContentService;
 import app.project.platform.service.MemberService;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.DisplayName;
@@ -72,9 +70,9 @@ public class CommentLikeConcurrencyTest {
 
         //  given);
         Long commentId = commentResponseDto.getId(); // 미리 DB에 생성해둔 테스트용 게시글 ID
-        String redisLikeCommentUserSet = RedisKey.LIKE_COMMENT_USERS_SET.makeKey(commentId);
-        String redisLikeCommentUserQueue = RedisKey.LIKE_COMMENT_USERS_QUEUE.makeKey(commentId);
-        String redisLikeCommentCount = RedisKey.LIKE_COMMENT_COUNT.makeKey(commentId);
+        String redisLikeCommentUserSet = PostRedisKey.LIKE_COMMENT_USERS_SET.makeKey(commentId);
+        String redisLikeCommentUserQueue = PostRedisKey.LIKE_COMMENT_USERS_QUEUE.makeKey(commentId);
+        String redisLikeCommentCount = PostRedisKey.LIKE_COMMENT_COUNT.makeKey(commentId);
 
         //  1. 테스트 전 Redis 상태를 깔끔하게 청소 (멱등성 보장)
         redisTemplate.delete(redisLikeCommentUserSet);
@@ -190,9 +188,9 @@ public class CommentLikeConcurrencyTest {
 
         //  given);
         Long commentId = commentResponseDto.getId(); // 미리 DB에 생성해둔 테스트용 게시글 ID
-        String redisLikeCommentUserSet = RedisKey.LIKE_COMMENT_USERS_SET.makeKey(commentId);
-        String redisLikeCommentUserQueue = RedisKey.LIKE_COMMENT_USERS_QUEUE.makeKey(commentId);
-        String redisLikeCommentCount = RedisKey.LIKE_COMMENT_COUNT.makeKey(commentId);
+        String redisLikeCommentUserSet = PostRedisKey.LIKE_COMMENT_USERS_SET.makeKey(commentId);
+        String redisLikeCommentUserQueue = PostRedisKey.LIKE_COMMENT_USERS_QUEUE.makeKey(commentId);
+        String redisLikeCommentCount = PostRedisKey.LIKE_COMMENT_COUNT.makeKey(commentId);
 
         //  1. 테스트 전 Redis 상태를 깔끔하게 청소 (멱등성 보장)
         redisTemplate.delete(redisLikeCommentUserSet);

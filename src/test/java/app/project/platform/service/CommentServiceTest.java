@@ -1,6 +1,6 @@
 package app.project.platform.service;
 
-import app.project.platform.domain.RedisKey;
+import app.project.platform.domain.PostRedisKey;
 import app.project.platform.domain.code.ErrorCode;
 import app.project.platform.domain.dto.CommentRequestDto;
 import app.project.platform.domain.dto.CommentResponseDto;
@@ -36,7 +36,6 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.assertj.core.api.InstanceOfAssertFactories.set;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
@@ -99,7 +98,7 @@ public class CommentServiceTest {
 
         Comment expectedSavedComment = createComment(1L, content, null, member, commentRequestDto.getText());
 
-        String redisValidComments = RedisKey.VALID_COMMENTS.makeKey();
+        String redisValidComments = PostRedisKey.VALID_COMMENTS.makeKey();
 
         //given
         given(memberRepository.findById(memberDto.getId())).willReturn(Optional.of(member));
@@ -155,7 +154,7 @@ public class CommentServiceTest {
 
         Comment comment = createComment(2L, content, parent, writer, commentRequestDto.getText());
 
-        String redisValidComments = RedisKey.VALID_COMMENTS.makeKey();
+        String redisValidComments = PostRedisKey.VALID_COMMENTS.makeKey();
 
         // given
         given(memberRepository.findById(memberDto.getId())).willReturn(Optional.of(writer));
@@ -302,11 +301,11 @@ public class CommentServiceTest {
         CommentLike commentLike = CommentLike.builder().build();
         ReflectionTestUtils.setField(commentLike, "id", 1L);
 
-        String redisValidComments = RedisKey.VALID_COMMENTS.makeKey();
-        String redisLikeCommentCount = RedisKey.LIKE_COMMENT_COUNT.makeKey(commentId);
-        String redisLikeCommentUserSet = RedisKey.LIKE_COMMENT_USERS_SET.makeKey(commentId);
-        String redisLikeCommentUserQueue = RedisKey.LIKE_COMMENT_USERS_QUEUE.makeKey(commentId);
-        String redisLikeUpdatedComments = RedisKey.LIKE_UPDATED_COMMENTS.makeKey();
+        String redisValidComments = PostRedisKey.VALID_COMMENTS.makeKey();
+        String redisLikeCommentCount = PostRedisKey.LIKE_COMMENT_COUNT.makeKey(commentId);
+        String redisLikeCommentUserSet = PostRedisKey.LIKE_COMMENT_USERS_SET.makeKey(commentId);
+        String redisLikeCommentUserQueue = PostRedisKey.LIKE_COMMENT_USERS_QUEUE.makeKey(commentId);
+        String redisLikeUpdatedComments = PostRedisKey.LIKE_UPDATED_COMMENTS.makeKey();
         long expectedTotalCount = 15L;
 
         // given
@@ -351,11 +350,11 @@ public class CommentServiceTest {
         CommentLike commentLike = CommentLike.builder().build();
         ReflectionTestUtils.setField(commentLike, "id", 1L);
 
-        String redisValidComments = RedisKey.VALID_COMMENTS.makeKey();
-        String redisLikeCommentCount = RedisKey.LIKE_COMMENT_COUNT.makeKey(commentId);
-        String redisLikeCommentUserSet = RedisKey.LIKE_COMMENT_USERS_SET.makeKey(commentId);
-        String redisLikeCommentUserQueue = RedisKey.LIKE_COMMENT_USERS_QUEUE.makeKey(commentId);
-        String redisLikeUpdatedComments = RedisKey.LIKE_UPDATED_COMMENTS.makeKey();
+        String redisValidComments = PostRedisKey.VALID_COMMENTS.makeKey();
+        String redisLikeCommentCount = PostRedisKey.LIKE_COMMENT_COUNT.makeKey(commentId);
+        String redisLikeCommentUserSet = PostRedisKey.LIKE_COMMENT_USERS_SET.makeKey(commentId);
+        String redisLikeCommentUserQueue = PostRedisKey.LIKE_COMMENT_USERS_QUEUE.makeKey(commentId);
+        String redisLikeUpdatedComments = PostRedisKey.LIKE_UPDATED_COMMENTS.makeKey();
         long expectedTotalCount = 15L;
 
         // given
@@ -397,7 +396,7 @@ public class CommentServiceTest {
         MemberDto memberDto = MemberDto.builder().id(1L).build();
 
         // RedisKey 초기화
-        String redisValidComments = RedisKey.VALID_COMMENTS.makeKey();
+        String redisValidComments = PostRedisKey.VALID_COMMENTS.makeKey();
 
         // given
         // Redis 처리 초기화
@@ -430,8 +429,8 @@ public class CommentServiceTest {
         ReflectionTestUtils.setField(member, "id", memberDto.getId());
 
         // Redis key
-        String redisValidComments = RedisKey.VALID_COMMENTS.makeKey();
-        String redisLikeCommentUsersSet = RedisKey.LIKE_COMMENT_USERS_SET.makeKey(commentId);
+        String redisValidComments = PostRedisKey.VALID_COMMENTS.makeKey();
+        String redisLikeCommentUsersSet = PostRedisKey.LIKE_COMMENT_USERS_SET.makeKey(commentId);
 
         //  given
         //  Redis 처리
@@ -465,11 +464,11 @@ public class CommentServiceTest {
         ReflectionTestUtils.setField(member, "id", memberDto.getId());
 
         // Redis Key
-        String redisValidComments = RedisKey.VALID_COMMENTS.makeKey();
-        String redisCommentUserSet = RedisKey.LIKE_COMMENT_USERS_SET.makeKey(commentId);
-        String redisLikeCommentUserRemoveQueue = RedisKey.LIKE_COMMENT_USERS_REMOVE_QUEUE.makeKey(commentId);
-        String redisCountLikeKey = RedisKey.LIKE_COMMENT_COUNT.makeKey(commentId);
-        String redisLikeUpdatedComments = RedisKey.LIKE_UPDATED_COMMENTS.makeKey();
+        String redisValidComments = PostRedisKey.VALID_COMMENTS.makeKey();
+        String redisCommentUserSet = PostRedisKey.LIKE_COMMENT_USERS_SET.makeKey(commentId);
+        String redisLikeCommentUserRemoveQueue = PostRedisKey.LIKE_COMMENT_USERS_REMOVE_QUEUE.makeKey(commentId);
+        String redisCountLikeKey = PostRedisKey.LIKE_COMMENT_COUNT.makeKey(commentId);
+        String redisLikeUpdatedComments = PostRedisKey.LIKE_UPDATED_COMMENTS.makeKey();
 
         //  given
         // Redis 처리
@@ -506,11 +505,11 @@ public class CommentServiceTest {
         ReflectionTestUtils.setField(member, "id", memberDto.getId());
 
         // Redis Key
-        String redisValidComments = RedisKey.VALID_COMMENTS.makeKey();
-        String redisCommentUserSet = RedisKey.LIKE_COMMENT_USERS_SET.makeKey(commentId);
-        String redisLikeCommentUserRemoveQueue = RedisKey.LIKE_COMMENT_USERS_REMOVE_QUEUE.makeKey(commentId);
-        String redisCountLikeKey = RedisKey.LIKE_COMMENT_COUNT.makeKey(commentId);
-        String redisLikeUpdatedComments = RedisKey.LIKE_UPDATED_COMMENTS.makeKey();
+        String redisValidComments = PostRedisKey.VALID_COMMENTS.makeKey();
+        String redisCommentUserSet = PostRedisKey.LIKE_COMMENT_USERS_SET.makeKey(commentId);
+        String redisLikeCommentUserRemoveQueue = PostRedisKey.LIKE_COMMENT_USERS_REMOVE_QUEUE.makeKey(commentId);
+        String redisCountLikeKey = PostRedisKey.LIKE_COMMENT_COUNT.makeKey(commentId);
+        String redisLikeUpdatedComments = PostRedisKey.LIKE_UPDATED_COMMENTS.makeKey();
 
         //  given
         // Redis 처리
@@ -548,7 +547,7 @@ public class CommentServiceTest {
         MemberDto memberDto = MemberDto.builder().id(1L).build();
 
         // Redis Key
-        String redisValidComments = RedisKey.VALID_COMMENTS.makeKey();
+        String redisValidComments = PostRedisKey.VALID_COMMENTS.makeKey();
 
         //  given
         // Redis 처리
@@ -580,8 +579,8 @@ public class CommentServiceTest {
         ReflectionTestUtils.setField(member, "id", memberDto.getId());
 
         // Redis Key
-        String redisValidComments = RedisKey.VALID_COMMENTS.makeKey();
-        String redisCommentUserSet = RedisKey.LIKE_COMMENT_USERS_SET.makeKey(commentId);
+        String redisValidComments = PostRedisKey.VALID_COMMENTS.makeKey();
+        String redisCommentUserSet = PostRedisKey.LIKE_COMMENT_USERS_SET.makeKey(commentId);
 
         //  given
         // Redis 처리
