@@ -36,8 +36,8 @@ public class DataInitializer implements CommandLineRunner {
         if (contentCount != null && contentCount > 0) return;
         if (commentCount != null && commentCount > 0) return;
 
-        String email = "test@email.com";
-        String nickname = "test";
+        String email = "test1@email.com";
+        String nickname = "test1";
         String password = "password";
 
         SignupRequestDto signupRequestDto = SignupRequestDto.builder()
