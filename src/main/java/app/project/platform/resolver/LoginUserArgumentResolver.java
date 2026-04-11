@@ -33,9 +33,10 @@ public class LoginUserArgumentResolver implements HandlerMethodArgumentResolver 
     @Override
     public Object resolveArgument(MethodParameter parameter, ModelAndViewContainer mavContainer, NativeWebRequest webRequest, WebDataBinderFactory binderFactory) throws Exception {
 
-        MemberDto memberDto = (MemberDto) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
 
-        if (memberDto == null) throw new BusinessException(ErrorCode.UNAUTHORIZED);
+        //  SecurityContextHolder.getContext().getAuthentication().getPrincipal()는 없으면 null 아니라 "anonymousUser"라는 String값을 내뱉는다.
+        if (!(principal instanceof MemberDto memberDto)) throw new BusinessException(ErrorCode.UNAUTHORIZED);
 
         log.info("🎯 [Resolver] 시큐리티 컨텍스트에서 꺼낸 유저 ID: {}, 이메일: {}, 권한: {}", memberDto.getId(), memberDto.getEmail(), memberDto.getRole());
 
