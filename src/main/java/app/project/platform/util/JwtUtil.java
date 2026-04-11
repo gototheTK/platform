@@ -1,12 +1,7 @@
 package app.project.platform.util;
 
-import app.project.platform.domain.code.ErrorCode;
+import app.project.platform.domain.Word;
 import app.project.platform.domain.dto.MemberDto;
-import app.project.platform.domain.dto.TokenDto;
-import app.project.platform.entity.Member;
-import app.project.platform.exception.BusinessException;
-import io.jsonwebtoken.ExpiredJwtException;
-import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
@@ -48,7 +43,8 @@ public class JwtUtil {
     public String createAccessToken(MemberDto memberDto) {
         return Jwts.builder()
                 .subject(memberDto.getEmail())
-                .claim("role", memberDto.getRole())
+                .claim(Word.UserId.getWord(), memberDto.getId())
+                .claim(Word.Role.getWord(), memberDto.getRole())
                 .issuedAt(new Date(System.currentTimeMillis())) // 발행 시간
                 .expiration(new Date(System.currentTimeMillis() + accessExpiration))  // 만료 시간
                 .signWith(accessSecretKey)    //  위조 방지를 위한 서명
@@ -59,7 +55,8 @@ public class JwtUtil {
     public String createRefreshToken(MemberDto memberDto) {
         return Jwts.builder()
                 .subject(memberDto.getEmail())
-                .claim("role", memberDto.getRole())
+                .claim(Word.UserId.getWord(), memberDto.getId())
+                .claim(Word.Role.getWord(), memberDto.getRole())
                 .issuedAt(new Date(System.currentTimeMillis())) // 발행 시간
                 .expiration(new Date(System.currentTimeMillis() + refreshExpiration))  // 만료 시간
                 .signWith(refreshSecretKey)    //  위조 방지를 위한 서명
@@ -83,7 +80,17 @@ public class JwtUtil {
                 .build()
                 .parseSignedClaims(token)
                 .getPayload()
-                .get("role", String.class);
+                .get(Word.Role.getWord(), String.class);
+    }
+
+    //  조회(유저ID)
+    public Long getUserIdFromAccessToken(String token) {
+        return Jwts.parser()
+                .verifyWith(accessSecretKey)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload()
+                .get(Word.UserId.getWord(), Long.class);
     }
 
     //  조회(이메일)
@@ -103,7 +110,17 @@ public class JwtUtil {
                 .build()
                 .parseSignedClaims(token)
                 .getPayload()
-                .get("role", String.class);
+                .get(Word.Role.getWord(), String.class);
+    }
+
+    //  조회(유저ID)
+    public Long getUserIdFromRefreshToken(String token) {
+        return Jwts.parser()
+                .verifyWith(refreshSecretKey)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload()
+                .get(Word.UserId.getWord(), Long.class);
     }
 
     //  엑세스 토큰 유효성 검증

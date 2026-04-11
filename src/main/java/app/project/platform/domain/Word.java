@@ -11,6 +11,7 @@ public enum Word {
     AccessToken("AccessToken"),
     Strict("Strict"),
     Role("role"),
+    UserId("userId")
     ;
 
     private final String word;

@@ -3,7 +3,6 @@ package app.project.platform.resolver;
 import app.project.platform.annotation.LoginUser;
 import app.project.platform.domain.code.ErrorCode;
 import app.project.platform.domain.dto.MemberDto;
-import app.project.platform.entity.Member;
 import app.project.platform.exception.BusinessException;
 import app.project.platform.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
@@ -34,15 +33,13 @@ public class LoginUserArgumentResolver implements HandlerMethodArgumentResolver 
     @Override
     public Object resolveArgument(MethodParameter parameter, ModelAndViewContainer mavContainer, NativeWebRequest webRequest, WebDataBinderFactory binderFactory) throws Exception {
 
-        String email = (String) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        log.info("🎯 [Resolver] 시큐리티 컨텍스트에서 꺼낸 이메일: {}", email);
+        MemberDto memberDto = (MemberDto) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
 
-        Member member = memberRepository.findByEmail(email).orElse(null);
+        if (memberDto == null) throw new BusinessException(ErrorCode.UNAUTHORIZED);
 
-        if (member == null) throw new BusinessException(ErrorCode.UNAUTHORIZED);
-        log.info("🎯 [Resolver] DB에서 꺼낸 실제 유저 ID: {}", member.getId());
+        log.info("🎯 [Resolver] 시큐리티 컨텍스트에서 꺼낸 유저 ID: {}, 이메일: {}, 권한: {}", memberDto.getId(), memberDto.getEmail(), memberDto.getRole());
 
-        return MemberDto.from(member);
+        return memberDto;
 
     }
 }

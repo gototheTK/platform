@@ -2,8 +2,8 @@ package app.project.platform.config;
 
 import app.project.platform.domain.ApiResponse;
 import app.project.platform.domain.code.ErrorCode;
+import app.project.platform.domain.dto.MemberDto;
 import app.project.platform.util.JwtUtil;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
@@ -13,7 +13,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -52,13 +51,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             //  4. JwtUtil을 사용해 토큰이 유효한지 검증합니다.
             jwtUtil.validateAccessToken(token);
             //  5. 유효하다면 토큰에서 이메일과 권한을 꺼냅니다.
+            Long userId = jwtUtil.getUserIdFromAccessToken(token);
             String email = jwtUtil.getEmailFromAccessToken(token);
             String role = jwtUtil.getRoleFromAccessToken(token);
+
+            MemberDto memberDto = MemberDto.builder().id(userId).email(email).role(role).build();
 
             //  6. 스프링 시큐리티가 알아들을 수 있는 '인증 객체'를 만듭니다
             //  Role 앞에는 관례적으로 "ROLE_" 접두사를 붙여줍니다.
             UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-              email, null, Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + role))
+                    memberDto, null, Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + role))
             );
 
             //  7. 스프링 시큐리티의 SecurityContext(보안 컨텍스트)에 인증 객체를 저장합니다.
