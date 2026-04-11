@@ -36,7 +36,7 @@ public class DataInitializer implements CommandLineRunner {
         if (contentCount != null && contentCount > 0) return;
         if (commentCount != null && commentCount > 0) return;
 
-        String email = "test1@email.com";
+        String email = "test1@test.com";
         String nickname = "test1";
         String password = "password";
 

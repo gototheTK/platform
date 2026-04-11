@@ -7,6 +7,7 @@ import app.project.platform.entity.Member;
 import app.project.platform.exception.BusinessException;
 import app.project.platform.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.MethodParameter;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
@@ -15,6 +16,7 @@ import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.ModelAndViewContainer;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class LoginUserArgumentResolver implements HandlerMethodArgumentResolver {
@@ -33,10 +35,12 @@ public class LoginUserArgumentResolver implements HandlerMethodArgumentResolver 
     public Object resolveArgument(MethodParameter parameter, ModelAndViewContainer mavContainer, NativeWebRequest webRequest, WebDataBinderFactory binderFactory) throws Exception {
 
         String email = (String) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        log.info("🎯 [Resolver] 시큐리티 컨텍스트에서 꺼낸 이메일: {}", email);
 
         Member member = memberRepository.findByEmail(email).orElse(null);
 
         if (member == null) throw new BusinessException(ErrorCode.UNAUTHORIZED);
+        log.info("🎯 [Resolver] DB에서 꺼낸 실제 유저 ID: {}", member.getId());
 
         return MemberDto.from(member);
 
