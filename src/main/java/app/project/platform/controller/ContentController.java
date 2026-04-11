@@ -9,6 +9,7 @@ import app.project.platform.domain.dto.MemberDto;
 import app.project.platform.service.ContentService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
@@ -22,6 +23,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.util.List;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/v1/content")
 @RequiredArgsConstructor
@@ -86,7 +88,7 @@ public class ContentController {
     public ResponseEntity<ApiResponse<Long>> addLike(
             @PathVariable(name = "id") Long id,
             @LoginUser MemberDto memberDto) {
-
+        log.info("좋아요 요청 시도 - 게시글 ID: {}, 유저 ID: {}", id, memberDto.getId());
         Long contentLikeId = contentService.addLike(id, memberDto);
 
         return ResponseEntity.ok(ApiResponse.success(contentLikeId));
@@ -97,6 +99,7 @@ public class ContentController {
             @PathVariable(name = "id") Long id,
             @LoginUser MemberDto memberDto) {
 
+        log.info("좋아요 취소 요청 시도 - 게시글 ID: {}, 유저 ID: {}", id, memberDto.getId());
         contentService.removeLike(id ,memberDto);
 
         return ResponseEntity.ok(ApiResponse.success(null));

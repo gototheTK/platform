@@ -8,9 +8,11 @@ import app.project.platform.domain.dto.MemberDto;
 import app.project.platform.service.CommentService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/v1/comment")
 @RequiredArgsConstructor
@@ -57,6 +59,7 @@ public class CommentController {
             @PathVariable(name = "id") Long id,
             @LoginUser MemberDto memberDto) {
 
+        log.info("좋아요 요청 시도 - 댓글 ID: {}, 유저 ID: {}", id, memberDto.getId());
         Long commentLikeId = commentService.addLike(id, memberDto);
 
         return ResponseEntity.ok(ApiResponse.success(commentLikeId));
@@ -67,6 +70,7 @@ public class CommentController {
             @PathVariable(name = "id") Long id,
             @LoginUser MemberDto memberDto) {
 
+        log.info("좋아요 취소 요청 시도 - 댓글 ID: {}, 유저 ID: {}", id, memberDto.getId());
         commentService.removeLike(id, memberDto);
 
         return ResponseEntity.ok(ApiResponse.success(null));
