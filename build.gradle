@@ -51,6 +51,9 @@ dependencies {
     runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.5'
     runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.5'
 
+    // Redisson (분산락 처리를 위한 라이브러리)
+    implementation 'org.redisson:redisson-spring-boot-starter:3.27.2'
+
     //  테스트 코드에서도 Lombok을 쓰기 위해 반드시 필요!
     testCompileOnly 'org.projectlombok:lombok'
     testAnnotationProcessor 'org.projectlombok:lombok'

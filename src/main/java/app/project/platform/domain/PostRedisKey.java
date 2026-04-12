@@ -19,6 +19,7 @@ public enum PostRedisKey {
     LIKE_CONTENT_USERS_REMOVE_QUEUE("post:like:content:users:remove:queue:%s", 7, TimeUnit.DAYS),
     LIKE_CONTENT_COUNT("post:like:content:count:%s", 7, TimeUnit.DAYS),
     LIKE_UPDATED_CONTENTS("post:like:updated:contents", 7, TimeUnit.DAYS),
+    LIKE_UPDATED_CONTENTS_PROCESSING("post:like:updated:contents_processing", 7, TimeUnit.DAYS),
     LIKE_DAILY_RANKING_COUNT("post:like:ranking:daily:count:%s", 7, TimeUnit.DAYS),
 
     // 댓글 좋아요
@@ -27,6 +28,7 @@ public enum PostRedisKey {
     LIKE_COMMENT_USERS_REMOVE_QUEUE("post:like:comment:users:remove:queue:%s", 7, TimeUnit.DAYS),
     LIKE_COMMENT_COUNT("post:like:comment:count:%s", 7, TimeUnit.DAYS),
     LIKE_UPDATED_COMMENTS("post:like:updated:comments", 7, TimeUnit.DAYS),
+    LIKE_UPDATED_COMMENTS_PROCESSING("post:like:updated:comments_processing", 7, TimeUnit.DAYS),
 
     // 회원 취향 조사(Hash)
     MEMBER_CATEGORY_VIEW_COUNT("post:member:category:view:count:%s", 7, TimeUnit.DAYS),

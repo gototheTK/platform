@@ -43,7 +43,7 @@ public class CommentLikeSyncService {
         long end = unit-1;
 
         String redisLikeCommentUsersQueue = PostRedisKey.LIKE_COMMENT_USERS_QUEUE.makeKey(commentId);
-        String insert = "INSERT INTO comment_like (comment_id, member_id) VALUES(?, ?)";
+        String insert = "INSERT IGNORE INTO comment_like (comment_id, member_id) VALUES(?, ?)";
 
         List<Object> memberIds = redisTemplate.opsForList().range(redisLikeCommentUsersQueue, start, end);
         while (memberIds != null && !memberIds.isEmpty()) {

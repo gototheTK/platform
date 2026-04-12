@@ -46,7 +46,7 @@ public class ContentLikeSyncService {
         long end = unit-1;
 
         String redisLikeContentUsersKey = PostRedisKey.LIKE_CONTENT_USERS_QUEUE.makeKey(content.getId());
-        String insertSql = "INSERT INTO content_like (content_id, member_id) VALUES(?, ?)";
+        String insertSql = "INSERT IGNORE INTO content_like (content_id, member_id) VALUES(?, ?)";
 
         List<Object> memberIdsToInsert = redisTemplate.opsForList().range(redisLikeContentUsersKey, start, end);
         while (memberIdsToInsert != null && !memberIdsToInsert.isEmpty()) {
