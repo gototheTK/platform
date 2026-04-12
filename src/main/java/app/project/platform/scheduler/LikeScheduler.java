@@ -37,7 +37,7 @@ public class LikeScheduler {
     private final RedissonClient redissonClient;
 
     //  10초마다 실행 (실무에서는 1분~5분궈장)
-    @Scheduled(fixedDelay = 10000)
+    //@Scheduled(fixedDelay = 10000)
     public void syncContentLikeCount() {
 
         //  1. [핵심] Redis 데이터를 건드리기 전에, '스케줄러 전체'에 대한 분산락을 먼저 시도한다.
@@ -113,7 +113,7 @@ public class LikeScheduler {
     }
 
     //  10초 마다 실행
-    @Scheduled(fixedDelay = 10000)
+    //@Scheduled(fixedDelay = 10000)
     public void syncCommentLikeCount() {
 
         // 락선언
