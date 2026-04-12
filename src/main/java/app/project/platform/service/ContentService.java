@@ -309,7 +309,6 @@ public class ContentService {
 
     }
 
-    @Transactional
     public Long addLike(
             Long contentId,
             MemberDto memberDto) {
@@ -354,7 +353,6 @@ public class ContentService {
         return contentLikeCount;
     }
 
-    @Transactional
     public void removeLike(
             Long contentId,
             MemberDto memberDto) {

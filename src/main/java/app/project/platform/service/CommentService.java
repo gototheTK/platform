@@ -108,7 +108,6 @@ public class CommentService {
 
     }
 
-    @Transactional
     public Long addLike(Long commentId, MemberDto memberDto) {
 
         // 댓글 조회
@@ -153,7 +152,6 @@ public class CommentService {
 
     }
 
-    @Transactional
     public void removeLike(Long commentId, MemberDto memberDto) {
 
         //  댓글과 회원 조회
