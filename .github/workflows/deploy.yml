@@ -5,6 +5,10 @@ name: platform-server
 on:
   push:
     branches: ["master"]
+    # 💡 README.md 파일이 변경되었을 때는 이 워크플로우를 실행하지 않습니다.
+    paths-ignore:
+      - 'README.md'
+      #- 'docs/**'  # 문서 폴더 전체를 제외하고 싶을 때
 
 permissions:
   contents: read
